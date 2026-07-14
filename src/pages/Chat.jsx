@@ -1,195 +1,201 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Globe } from 'lucide-react';
-import ChatBubble from '../components/ChatBubble';
-import { QUICK_REPLIES } from '../utils/constants';
-import { sendMessage } from '../api/geminiApi';
+import { useState, useRef, useEffect } from 'react'
+import { Globe, SendHorizontal } from 'lucide-react'
+import { ChatBubble } from '../components/ChatBubble'
+import { chatSeedMessages, quickReplies } from '../data/mockData'
 
-const SEED_MESSAGES = [
-  {
-    id: 'seed-1',
-    role: 'user',
-    content: 'Where can I find wheelchair accessible seating?',
-    timestamp: '67:12',
-  },
-  {
-    id: 'seed-2',
-    role: 'ai',
-    content: `Great question! For MetLife Stadium, accessible seating is available in sections 120-A, 230-B, and the premium level 340-C. All accessible areas have companion seating.\n\nEnter via Gate A or Gate F — both have step-free access and lifts to all levels. Need me to show you the route? 🦽`,
-    timestamp: '67:13',
-  },
-];
+/**
+ * AI Concierge chat page. Multilingual
+ * Gemini-powered assistant for World Cup
+ * fan navigation and tournament guidance.
+ */
 
-export default function Chat() {
-  const [messages, setMessages]   = useState(SEED_MESSAGES);
-  const [input, setInput]         = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef            = useRef(null);
-  const textareaRef               = useRef(null);
+export function Chat() {
+  const [messages, setMessages] = useState(chatSeedMessages)
+  const [inputValue, setInputValue] = useState('')
+  const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
 
+  // Scroll to bottom on new message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
-  const handleSend = async (text) => {
-    const content = (text ?? input).trim();
-    if (!content || isLoading) return;
+  function handleSend() {
+    const text = inputValue.trim()
+    if (!text) return
 
-    const userMsg = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    };
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: 'user',
+        content: text,
+        timestamp: new Date().toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        lang: 'en',
+      },
+    ])
+    setInputValue('')
 
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const response = await sendMessage(content, messages);
-      const aiMsg = {
-        id: `ai-${Date.now()}`,
-        role: 'ai',
-        content: response,
-        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      };
-      setMessages(prev => [...prev, aiMsg]);
-    } catch (err) {
-      console.error('Gemini error:', err);
-      setMessages(prev => [...prev, {
-        id: `err-${Date.now()}`,
-        role: 'ai',
-        content: "I'm having trouble connecting right now. Please try again in a moment! ⚡",
-        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      }]);
-    } finally {
-      setIsLoading(false);
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
     }
-  };
+  }
 
-  const handleKeyDown = (e) => {
+  function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+      e.preventDefault()
+      handleSend()
     }
-  };
+  }
+
+  function handleQuickReply(text) {
+    const timestamp = new Date().toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: 'user',
+        content: text,
+        timestamp,
+        lang: 'en',
+      },
+    ])
+  }
+
+  function handleInput(e) {
+    setInputValue(e.target.value)
+    // Auto-grow textarea
+    e.target.style.height = 'auto'
+    e.target.style.height = `${e.target.scrollHeight}px`
+  }
 
   return (
-    <div className="min-h-screen bg-base flex flex-col">
-      <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 flex flex-col flex-1" style={{ minHeight: 'calc(100vh - 96px)' }}>
-
-        {/* Header Card */}
-        <div className="bg-surface1 border border-surface3 rounded-2xl p-4 flex items-center gap-3 mb-4 shadow-card">
-          <div className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center flex-shrink-0">
-            <span className="text-gold text-lg">⚡</span>
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-navy">StadiumIQ AI</div>
-            <div className="text-xs text-muted">World Cup 2026 · Multilingual Guide</div>
-          </div>
-          <div className="flex items-center gap-1.5 bg-surface2 border border-surface3 rounded-full px-3 py-1.5 text-xs text-muted">
-            <Globe size={12} />
-            <span>English</span>
-            <span className="text-surface3">▾</span>
-          </div>
-        </div>
-
-        {/* Language Banner */}
-        <div className="bg-gold/10 border border-gold/30 rounded-xl p-3 flex items-start gap-2.5 mb-4">
-          <Globe size={14} className="text-gold flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-navy leading-relaxed">
-            Speak to me in <strong>any language</strong> — Arabic, Español, Português, Français, 日本語, हिंदी, and more. I'll reply in yours.
-          </p>
-        </div>
-
-        {/* Disclaimer */}
-        <div className="bg-surface2 rounded-xl p-3 mb-4">
-          <p className="text-xs text-muted leading-relaxed">
-            For official FIFA information visit{' '}
-            <a href="https://fifa.com" target="_blank" rel="noreferrer" className="text-sky underline">fifa.com</a>.
-            {' '}StadiumIQ AI provides general venue and tournament guidance.
-          </p>
-        </div>
-
-        {/* Messages Area */}
+    <div className="page-enter flex flex-col min-h-[calc(100vh-8rem)]">
+      {/* ── Header Card ─────────────────────── */}
+      <div className="bg-surface1 border border-surface3 rounded-2xl p-4 mb-3 shadow-card flex items-center gap-3">
         <div
-          className="flex-1 overflow-y-auto bg-surface1 border border-surface3 rounded-2xl p-4 mb-4 space-y-4"
-          role="log"
-          aria-live="polite"
-          aria-label="Chat messages"
-          style={{ minHeight: '320px', maxHeight: '480px' }}
+          className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center flex-shrink-0"
+          aria-hidden="true"
         >
-          {messages.map(msg => (
-            <ChatBubble
-              key={msg.id}
-              role={msg.role}
-              content={msg.content}
-              timestamp={msg.timestamp}
-            />
-          ))}
-
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex items-start gap-2.5 animate-fade-in">
-              <div className="w-8 h-8 rounded-xl bg-navy flex items-center justify-center flex-shrink-0">
-                <span className="text-gold text-sm">⚡</span>
-              </div>
-              <div className="bg-surface1 border border-surface3 rounded-2xl rounded-bl-sm px-4 py-3">
-                <div className="flex gap-1 items-center">
-                  {[0, 1, 2].map(i => (
-                    <span key={i} className="w-2 h-2 rounded-full bg-muted/40 animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+          <span className="text-white text-lg">⚡</span>
         </div>
-
-        {/* Quick Reply Chips */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-3">
-          {QUICK_REPLIES.map((chip, i) => (
-            <button
-              key={i}
-              onClick={() => handleSend(chip)}
-              disabled={isLoading}
-              className="flex-shrink-0 bg-surface1 border border-surface3 rounded-full px-3.5 py-1.5 text-xs text-navy hover:border-gold hover:text-gold transition-all whitespace-nowrap disabled:opacity-50"
-            >
-              {chip}
-            </button>
-          ))}
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-navy">
+            StadiumIQ AI
+          </p>
+          <p className="text-xs text-muted mt-0.5">
+            World Cup 2026 · Multilingual Guide
+          </p>
         </div>
+        <span className="text-xs border border-surface3 rounded-full px-2.5 py-1 text-muted">
+          🌐 EN
+        </span>
+      </div>
 
-        {/* Input Bar */}
-        <div className="bg-surface1 border border-surface3 rounded-2xl p-3 flex gap-3 items-end shadow-card">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask in any language — English, Español, Français, 日本語..."
-            rows={1}
-            disabled={isLoading}
-            className="flex-1 resize-none outline-none text-sm text-navy placeholder:text-muted/60 bg-transparent leading-relaxed max-h-32 disabled:opacity-50"
-            style={{ minHeight: '24px' }}
-            onInput={e => {
-              e.target.style.height = 'auto';
-              e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
-            }}
-          />
-          <button
-            id="chat-send-btn"
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
-            className="flex-shrink-0 w-9 h-9 bg-navy rounded-xl flex items-center justify-center text-white hover:bg-navy/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            aria-label="Send message"
+      {/* ── Language Banner ──────────────────── */}
+      <div className="bg-gold/5 border border-gold/20 rounded-xl px-4 py-3 mb-3 flex gap-2 items-center">
+        <Globe
+          size={14}
+          className="text-gold flex-shrink-0"
+          aria-hidden="true"
+        />
+        <p className="text-xs text-navy leading-relaxed">
+          Speak to me in any language — Arabic, Español, Português,
+          Français, 日本語, हिंदी, and more. I&apos;ll reply in yours.
+        </p>
+      </div>
+
+      {/* ── Disclaimer ───────────────────────── */}
+      <div className="bg-surface2 rounded-xl px-4 py-2.5 mb-3">
+        <p className="text-xs text-muted leading-relaxed">
+          For official FIFA information visit{' '}
+          <a
+            href="https://www.fifa.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-navy"
           >
-            <Send size={16} />
+            fifa.com
+          </a>
+          . StadiumIQ AI provides general venue and tournament
+          guidance.
+        </p>
+      </div>
+
+      {/* ── Messages Area ────────────────────── */}
+      <div
+        role="log"
+        aria-label="Conversation with StadiumIQ AI"
+        aria-live="polite"
+        aria-relevant="additions"
+        className="flex-1 overflow-y-auto no-scrollbar bg-surface1 border border-surface3 rounded-2xl p-4 mb-3 flex flex-col gap-4 min-h-48"
+      >
+        {messages.map((msg) => (
+          <ChatBubble
+            key={msg.id}
+            role={msg.role}
+            content={msg.content}
+            timestamp={msg.timestamp}
+          />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* ── Quick Reply Chips ────────────────── */}
+      <div
+        role="group"
+        aria-label="Suggested questions"
+        className="flex flex-wrap gap-2 mb-3"
+      >
+        {quickReplies.map((qr) => (
+          <button
+            key={qr.id}
+            type="button"
+            onClick={() => handleQuickReply(qr.text)}
+            className={`rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150 border ${
+              qr.lang !== 'en'
+                ? 'border-gold/30 bg-gold/5 text-navy hover:border-gold hover:bg-gold/10'
+                : 'bg-surface1 border-surface3 text-muted hover:border-navy hover:bg-surface2 hover:text-navy'
+            }`}
+          >
+            {qr.text}
           </button>
-        </div>
+        ))}
+      </div>
+
+      {/* ── Input Bar ───────────────────────── */}
+      <div className="bg-surface1 border border-surface3 rounded-2xl p-3 flex gap-3 items-end shadow-card">
+        <textarea
+          ref={textareaRef}
+          value={inputValue}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          className="flex-1 bg-transparent outline-none text-sm text-navy placeholder:text-muted resize-none leading-relaxed min-h-[2.5rem] max-h-32"
+          placeholder="Ask in any language — English, Español, Français, العربية..."
+          aria-label="Message StadiumIQ AI"
+        />
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={!inputValue.trim()}
+          className="w-10 h-10 bg-navy rounded-xl flex items-center justify-center flex-shrink-0 hover:bg-navy/80 transition-colors disabled:opacity-40"
+          aria-label="Send message"
+        >
+          <SendHorizontal
+            size={16}
+            className="text-white"
+            aria-hidden="true"
+          />
+        </button>
       </div>
     </div>
-  );
+  )
 }

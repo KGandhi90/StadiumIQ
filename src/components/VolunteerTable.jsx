@@ -1,86 +1,80 @@
-import { useState } from 'react';
-import PropTypes from 'prop-types';
+import PropTypes from 'prop-types'
+import { StatusPill } from './StatusPill'
 
-const STATUS_STYLES = {
-  'on-duty': { dot: 'bg-green-400', text: 'text-green-400', label: 'On Duty'  },
-  break:     { dot: 'bg-yellow-400',text: 'text-yellow-400',label: 'Break'    },
-  off:       { dot: 'bg-white/20',  text: 'text-white/40',  label: 'Off'      },
-};
+/**
+ * Volunteer management table for Ops Dashboard.
+ * @param {object} props
+ * @param {Array} props.volunteers - Volunteer objects
+ */
 
-export default function VolunteerTable({ volunteers = [], onToggle }) {
-  const [localVolunteers, setLocalVolunteers] = useState(volunteers);
-
-  const cycleStatus = (id) => {
-    const cycle = { 'on-duty': 'break', break: 'off', off: 'on-duty' };
-    const updated = localVolunteers.map(v =>
-      v.id === id ? { ...v, status: cycle[v.status] } : v
-    );
-    setLocalVolunteers(updated);
-    onToggle?.(id, cycle[localVolunteers.find(v => v.id === id).status]);
-  };
-
+export function VolunteerTable({ volunteers }) {
   return (
-    <div className="bg-dash-surface1 border border-dash-surface3 rounded-2xl overflow-hidden">
+    <div className="bg-ops-surface1 border border-ops-surface3 rounded-2xl p-5">
+      <h2 className="text-base font-semibold text-white mb-4">
+        Active Volunteers
+      </h2>
+
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table
+          className="w-full text-sm"
+          aria-label="Active volunteers"
+        >
           <thead>
-            <tr className="border-b border-dash-surface3">
-              {['Volunteer', 'Role', 'Zone', 'Status', 'Action'].map(h => (
-                <th key={h}
-                  className="text-left px-4 py-3 text-[11px] text-white/40 font-medium uppercase tracking-wider">
-                  {h}
-                </th>
-              ))}
+            <tr className="text-ops-muted text-xs uppercase tracking-wide font-mono text-left">
+              <th className="pb-3 pr-4 font-medium" scope="col">
+                Name
+              </th>
+              <th
+                className="pb-3 pr-4 font-medium hidden sm:table-cell"
+                scope="col"
+              >
+                Role
+              </th>
+              <th className="pb-3 pr-4 font-medium" scope="col">
+                Zone
+              </th>
+              <th className="pb-3 font-medium" scope="col">
+                Status
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-dash-surface3/50">
-            {localVolunteers.map(v => {
-              const style = STATUS_STYLES[v.status] ?? STATUS_STYLES.off;
-              return (
-                <tr key={v.id} className="hover:bg-dash-surface2 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-dash-surface3 flex items-center justify-center text-xs text-white/60 font-medium">
-                        {v.name.charAt(0)}
-                      </div>
-                      <span className="text-white text-xs font-medium">{v.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-white/60 text-xs">{v.role}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-mono-data text-yellow-400 text-xs">{v.zone}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${style.dot} ${v.status === 'on-duty' ? 'animate-pulse' : ''}`} />
-                      <span className={`text-xs ${style.text}`}>{style.label}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => cycleStatus(v.id)}
-                      className="text-[11px] px-3 py-1.5 rounded-lg border border-dash-surface3 text-white/50 hover:text-white hover:border-yellow-400/50 transition-all"
-                    >
-                      Toggle
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+          <tbody>
+            {volunteers.map((vol, i) => (
+              <tr
+                key={vol.id}
+                className={`text-white/80 ${
+                  i % 2 === 0 ? '' : 'bg-ops-surface2/30'
+                }`}
+              >
+                <td className="py-2.5 pr-4 font-medium">
+                  {vol.name}
+                </td>
+                <td className="py-2.5 pr-4 text-ops-muted hidden sm:table-cell">
+                  {vol.role}
+                </td>
+                <td className="py-2.5 pr-4 font-mono text-xs text-ops-muted">
+                  {vol.zone}
+                </td>
+                <td className="py-2.5">
+                  <StatusPill status={vol.status} />
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
     </div>
-  );
+  )
 }
 
 VolunteerTable.propTypes = {
-  volunteers: PropTypes.arrayOf(PropTypes.shape({
-    id:     PropTypes.string,
-    name:   PropTypes.string,
-    role:   PropTypes.string,
-    zone:   PropTypes.string,
-    status: PropTypes.string,
-  })),
-  onToggle: PropTypes.func,
-};
+  volunteers: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      name: PropTypes.string.isRequired,
+      role: PropTypes.string.isRequired,
+      zone: PropTypes.string.isRequired,
+      status: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+}

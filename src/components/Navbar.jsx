@@ -1,93 +1,125 @@
-import { NavLink } from 'react-router-dom';
-import { Home, Map, MessageCircle, Star, ExternalLink } from 'lucide-react';
+import { useState } from 'react'
+import { NavLink } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
+
+/**
+ * Main navigation bar for StadiumIQ 2026
+ * fan-facing pages. Fixed top, full width.
+ */
 
 const NAV_LINKS = [
-  { to: '/',        label: 'Home',     icon: Home            },
-  { to: '/navigate',label: 'Navigate', icon: Map             },
-  { to: '/chat',    label: 'AI Chat',  icon: MessageCircle   },
-  { to: '/fanzone', label: 'Fan Zone', icon: Star            },
-];
+  { to: '/', label: 'Home', end: true },
+  { to: '/navigate', label: 'Navigate', end: false },
+  { to: '/chat', label: 'AI Guide', end: false },
+  { to: '/fanzone', label: 'Fan Zone', end: false },
+]
 
-export default function Navbar() {
+export function Navbar() {
+  const [isOpen, setIsOpen] = useState(false)
+
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-surface3 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-surface1/95 backdrop-blur-md border-b border-surface3 shadow-card">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+        {/* Logo */}
+        <NavLink
+          to="/"
+          className="flex items-center gap-1 flex-shrink-0"
+          aria-label="StadiumIQ 2026 home"
+        >
+          <span className="text-xl" aria-hidden="true">
+            ⚽
+          </span>
+          <span className="font-display text-xl text-navy">
+            StadiumIQ
+          </span>
+          <span className="font-display text-xl text-gold">2026</span>
+        </NavLink>
 
-          {/* Logo */}
-          <NavLink to="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 bg-navy rounded-lg flex items-center justify-center">
-              <span className="text-gold font-display text-lg leading-none">S</span>
-            </div>
-            <div className="leading-tight">
-              <div className="font-display text-navy text-lg tracking-wide leading-none">StadiumIQ</div>
-              <div className="text-[10px] text-muted font-medium tracking-widest uppercase leading-none mt-0.5">2026</div>
-            </div>
-          </NavLink>
+        {/* Desktop nav */}
+        <nav
+          className="hidden md:flex items-center gap-6"
+          aria-label="Main navigation"
+        >
+          {NAV_LINKS.map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                isActive
+                  ? 'text-sm font-medium text-gold border-b-2 border-gold pb-0.5'
+                  : 'text-sm font-medium text-muted hover:text-navy transition-colors'
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
 
-          {/* Nav Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150
-                  ${isActive
-                    ? 'text-navy bg-surface2 border-b-2 border-gold'
-                    : 'text-muted hover:text-navy hover:bg-surface2'
-                  }`
-                }
-              >
-                <Icon size={15} strokeWidth={2} />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+        {/* Right controls */}
+        <div className="flex items-center gap-3">
+          {/* Language pill (decorative) */}
+          <span className="hidden sm:inline-flex items-center border border-surface3 rounded-full px-3 py-1 text-xs text-muted font-medium">
+            🌐 EN
+          </span>
 
-          {/* Mobile Nav */}
-          <nav className="flex md:hidden items-center gap-0.5">
-            {NAV_LINKS.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                className={({ isActive }) =>
-                  `flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all
-                  ${isActive ? 'text-navy' : 'text-muted'}`
-                }
-              >
-                <Icon size={18} strokeWidth={2} />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* Staff Portal CTA */}
+          {/* Ops Center button (desktop) */}
           <NavLink
             to="/dashboard"
-            className="hidden md:flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-navy border border-navy/20 rounded-lg hover:bg-navy hover:text-white transition-all duration-200"
+            className="hidden md:inline-flex text-xs font-medium border border-navy rounded-lg px-3 py-1.5 text-navy hover:bg-navy hover:text-white transition-colors"
           >
-            Staff Portal
-            <ExternalLink size={13} />
+            Ops Center
           </NavLink>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden p-2 rounded-lg text-muted hover:text-navy hover:bg-surface2 transition-colors"
+            aria-label="Toggle navigation menu"
+            aria-expanded={isOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setIsOpen((v) => !v)}
+          >
+            {isOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
 
-      {/* Live Match Ticker */}
-      <div className="bg-navy px-4 py-1.5 flex items-center justify-center gap-4 overflow-x-auto scrollbar-hide">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="w-2 h-2 rounded-full bg-crimson animate-pulse-live" />
-          <span className="text-white/60 text-xs font-medium uppercase tracking-wider">Live</span>
-          <span className="text-white text-xs font-medium">🇧🇷 Brazil</span>
-          <span className="font-display text-gold text-base leading-none">2 – 1</span>
-          <span className="text-white text-xs font-medium">Argentina 🇦🇷</span>
-          <span className="font-display text-gold/70 text-sm leading-none">67'</span>
-        </div>
-        <span className="text-white/20 flex-shrink-0">·</span>
-        <span className="text-white/50 text-xs flex-shrink-0">MetLife Stadium · Group C</span>
-      </div>
+      {/* Mobile menu */}
+      {isOpen && (
+        <nav
+          id="mobile-menu"
+          role="menu"
+          className="md:hidden bg-surface1 border-b border-surface3 px-4 py-3 flex flex-col gap-1"
+          aria-label="Mobile navigation"
+        >
+          {NAV_LINKS.map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              role="menuitem"
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) =>
+                `py-2.5 px-3 rounded-xl text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-surface2 text-navy'
+                    : 'text-muted hover:bg-surface2 hover:text-navy'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+          <NavLink
+            to="/dashboard"
+            role="menuitem"
+            onClick={() => setIsOpen(false)}
+            className="py-2.5 px-3 rounded-xl text-sm font-medium text-muted hover:bg-surface2 hover:text-navy transition-colors"
+          >
+            Ops Center
+          </NavLink>
+        </nav>
+      )}
     </header>
-  );
+  )
 }

@@ -2,131 +2,136 @@
 
 ## Overview
 
-StadiumIQ 2026 is a React 18 + Vite single-page application serving as a GenAI-powered stadium operations and fan experience platform for the FIFA World Cup 2026.
+GenAI-powered stadium operations and fan experience platform for FIFA
+World Cup 2026. Built for fans, venue staff, and organizers across 16
+host cities in USA, Canada, Mexico.
 
-## Key Design Decisions
+## Layered Structure
 
-### Split Theme
-- **Fan pages** (Home, Navigate, Chat, Fan Zone): Light, premium aesthetic with `#F8FAFF` base, navy text, gold accents
-- **Ops Dashboard**: Deep navy `#0A1628` background, data-dense layout, own full-page layout without shared Navbar
+### 1. Pages (`/src/pages`)
 
-### Routing
-- `/`          → Home (fan hub, live match, transport)
-- `/navigate`  → Navigate (SVG map, gate times, transport)
-- `/chat`      → AI Concierge (Gemini-powered multilingual)
-- `/fanzone`   → Fan Zone (stats, commentary, sustainability)
-- `/dashboard` → Ops Dashboard (dark theme, own layout)
+Thin composition layers only. Each page wires data and components
+together. No business logic, no complex markup — under 70 lines each
+(excluding comments).
 
-## Technology Stack
+### 2. Components (`/src/components`)
 
-| Layer | Technology |
-|-------|-----------|
-| UI Framework | React 18 |
-| Build Tool | Vite 8 |
-| Styling | Tailwind CSS v3 |
-| Routing | React Router v6 |
-| Icons | Lucide React |
-| AI | Google Gemini (`gemini-2.0-flash`) |
-| Database | Firebase Firestore (real-time) |
-| Auth | Firebase Anonymous Auth |
-| Analytics | Google Analytics 4 |
-| Testing | Vitest + React Testing Library |
+Single-responsibility UI components. Each does exactly one thing,
+receives data via props, has PropTypes on every prop, and has no
+knowledge of data sources. All use **named exports**.
 
-## Directory Structure
+### 3. Hooks (`/src/hooks`) ← Phase 2
 
-```
-src/
-├── api/
-│   ├── geminiApi.js       # Gemini 2.0 Flash integration + mock fallback
-│   └── firebase.js        # Firestore, Auth, Analytics
-├── components/
-│   ├── AlertFeed.jsx      # Dashboard alert list
-│   ├── ChatBubble.jsx     # Chat message bubbles (user/AI)
-│   ├── CommentaryFeed.jsx # AI match commentary
-│   ├── CrowdHeatmap.jsx   # Dashboard SVG density map
-│   ├── MatchCard.jsx      # Hero live match card
-│   ├── Navbar.jsx         # Fan-facing sticky nav + live ticker
-│   ├── StatCard.jsx       # Quick stat tiles (light/dark)
-│   ├── StatusPill.jsx     # Status badge (crowd/transport/alert)
-│   ├── SustainabilityTracker.jsx
-│   ├── TransportStrip.jsx # Horizontal transport cards
-│   ├── VenueMap.jsx       # SVG venue map (500×500)
-│   └── VolunteerTable.jsx # Dashboard volunteer management
-├── context/
-│   └── AppContext.jsx     # Match state, alerts, minute clock
-├── data/
-│   └── mockData.js        # Aggregated mock data exports
-├── pages/
-│   ├── Chat.jsx           # AI Concierge (Gemini)
-│   ├── Dashboard.jsx      # Ops Dashboard (dark theme)
-│   ├── FanZone.jsx        # Stats, commentary, sustainability
-│   ├── Home.jsx           # Live match hub
-│   └── Navigate.jsx       # Venue map + gate times
-├── test/
-│   ├── setup.js           # jest-dom setup
-│   ├── StatusPill.test.jsx
-│   ├── StatCard.test.jsx
-│   └── ChatBubble.test.jsx
-└── utils/
-    ├── analytics.js       # GA4 event wrapper
-    ├── constants.js       # All mock data, system prompt
-    └── helpers.js         # Formatting, status utilities
-```
+All stateful logic. Own state, derive values with `useMemo`, expose
+actions via `useCallback`. Components remain as thin as possible.
 
-## AI Integration
+### 4. Utils & API (`/src/utils`, `/src/api`) ← Phase 2/3
 
-### Gemini 2.0 Flash (`src/api/geminiApi.js`)
-- **System prompt**: Configures AI as a stadium-aware, multilingual FIFA WC 2026 assistant
-- **Multilingual**: Detects input language and responds in kind (tested: ES, FR, PT, AR, JA, HI)
-- **Chat history**: Passes prior messages as Gemini chat history for contextual responses
-- **Mock fallback**: If `VITE_GEMINI_API_KEY` is absent, rotates through curated mock responses — demo works without API key
+Pure functions (`constants.js`, `helpers.js`, `analytics.js`) and
+service integrations (`geminiApi.js`, `firebase.js`). All async calls
+wrapped in `safeAsync` for consistent error handling.
 
-### Firebase (`src/api/firebase.js`)
-- **Firestore**: Real-time `onSnapshot` listeners for alerts and crowd collections
-- **Anonymous Auth**: Signed in on app mount via `signInAnonymously`
-- **Graceful degradation**: Falls back to mock data if project keys are absent
+## GenAI Integration ← Phase 3
 
-## Environment Variables
+- **AI Concierge (`/chat`)**: Gemini multilingual assistant — detects
+  language and responds in kind. Specialized for FIFA WC 2026 venue
+  navigation and tournament information.
+- **Match Commentary (`/fanzone`)**: Gemini generates real-time match
+  insights on demand.
+- **Ops AI Insights (`/dashboard`)**: Gemini crowd modeling
+  recommendations for venue staff.
 
-```
-VITE_GEMINI_API_KEY          # Google AI Studio key
-VITE_FIREBASE_API_KEY        # Firebase web API key
-VITE_FIREBASE_AUTH_DOMAIN
-VITE_FIREBASE_PROJECT_ID
-VITE_FIREBASE_STORAGE_BUCKET
-VITE_FIREBASE_MESSAGING_SENDER_ID
-VITE_FIREBASE_APP_ID
-VITE_GA_MEASUREMENT_ID       # GA4 Measurement ID
-```
+## Google Services ← Phase 3
 
-## Typography System
+| Service | Purpose |
+|---------|---------|
+| Gemini API | AI Concierge + Commentary |
+| Firebase Firestore | Live crowd data, alerts, volunteer assignments |
+| Firebase Auth | Anonymous auth for fan sessions |
+| Google Analytics 4 | Event tracking |
 
-| Family | Usage |
-|--------|-------|
-| Bebas Neue | Match scores, gate letters, stat values, commentary timestamps |
-| Inter 300/400/500/600 | All body text, labels, navigation |
-| JetBrains Mono | Crowd counts, wait times, timestamps, data values |
+## Type Safety
+
+All `src/utils/**`, `src/hooks/**`, and `src/api/**` files open with
+`// @ts-check`. JSDoc annotations validated by TypeScript checker:
+`npm run type-check`.
+
+## Constants
+
+All magic numbers in `/src/utils/constants.js`. No inline literals
+in component code. Reference constants by name for searchability
+and single-source-of-truth.
+
+## Error Handling ← Phase 3
+
+All async ops use `safeAsync` wrapper from `/src/utils/errorHandler.js`
+which returns `[data, error]` tuples instead of throwing, enabling
+consistent error boundary handling.
+
+## Code Quality
+
+| Tool | Command | Purpose |
+|------|---------|---------|
+| ESLint | `npm run lint` | Lint rules incl. jsx-a11y, react-hooks |
+| Prettier | `npm run format` | Consistent code style |
+| TypeScript | `npm run type-check` | JSDoc type validation |
+| Husky | pre-commit hook | Runs lint-staged before every commit |
+| Vitest | `npm run test` | Component unit tests |
+
+## Accessibility Checklist
+
+- Skip-to-main link visible on keyboard focus
+- Gold `outline` on all `:focus-visible` elements
+- `role="log"` + `aria-live="polite"` on chat messages
+- `role="progressbar"` with `aria-valuenow` on sustainability bars
+- `role="switch"` + `aria-checked` on accessibility mode toggle
+- `aria-label` on all icon-only buttons
+- `scope="col"` on table headers
+- Semantic `<time>` elements for all timestamps
+- `<article>` elements for chat bubbles and match cards
+
+## Routing
+
+| Path | Component | Layout |
+|------|-----------|--------|
+| `/` | `Home` | `FanLayout` (Navbar + skip-link) |
+| `/navigate` | `Navigate` | `FanLayout` |
+| `/chat` | `Chat` | `FanLayout` |
+| `/fanzone` | `FanZone` | `FanLayout` |
+| `/dashboard` | `Dashboard` | Standalone (dark ops layout) |
 
 ## Color System
 
 ### Fan Pages (Light)
-- `base #F8FAFF` — page background
-- `navy #0F2044` — primary text, hero cards
-- `gold #D97706` — CTAs, active states, scores
-- `crimson #DC2626` — LIVE indicators, alerts
-- `sky #0EA5E9` — navigation, info
-- `green #16A34A` — success, sustainability
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `base` | `#F8FAFF` | Page background |
+| `surface1` | `#FFFFFF` | Cards |
+| `surface2` | `#F1F5F9` | Highlighted sections |
+| `surface3` | `#E2E8F0` | Borders, dividers |
+| `navy` | `#0F2044` | Primary text, hero cards |
+| `gold` | `#D97706` | CTAs, active states, scores |
+| `crimson` | `#DC2626` | LIVE indicator, alerts |
+| `sky` | `#0EA5E9` | Transport info, accessibility |
+| `green` | `#16A34A` | Success, sustainability |
+| `muted` | `#64748B` | Secondary text |
 
 ### Ops Dashboard (Dark)
-- `#0A1628` — page base
-- `#0F2044` — cards
-- `#FFB800` — gold accents (brighter on dark)
-- `#EF4444` — alerts
 
-## Demo Flow (Hackathon)
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `ops-base` | `#0A1628` | Page background |
+| `ops-surface1` | `#0F2044` | Sidebar, cards |
+| `ops-surface2` | `#162852` | Hover/active states |
+| `ops-surface3` | `#1E3A6E` | Borders |
+| `ops-gold` | `#FFB800` | Accents (brighter on dark) |
+| `ops-muted` | `#94A3B8` | Secondary text |
 
-1. **Home** — Show live match card (LIVE badge pulsing), venue selector
-2. **Navigate** — Toggle filter tabs, show Accessibility Mode with route
-3. **Chat** — Type or click a quick reply chip → AI responds (real or mock)
-4. **Dashboard** — Show dark ops view, click sidebar sections, AI recommendation
-5. **Fan Zone** — Match stats bars, commentary feed, sustainability tracker
+## Typography
+
+| Family | Weight | Usage |
+|--------|--------|-------|
+| Bebas Neue | 400 | Scores, gate letters, stat values |
+| Inter | 300/400/500/600 | All body text, labels, nav |
+| JetBrains Mono | 400/500 | Gate waits, timestamps, data |

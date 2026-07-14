@@ -1,161 +1,190 @@
-import { useState } from 'react';
-import { Accessibility, Route, Navigation } from 'lucide-react';
-import VenueMap from '../components/VenueMap';
-import StatusPill from '../components/StatusPill';
-import { GATES, TRANSPORT_STATUS } from '../utils/constants';
+import { useState } from 'react'
+import { VenueMap } from '../components/VenueMap'
+import { StatusPill } from '../components/StatusPill'
+import { TransportStrip } from '../components/TransportStrip'
+import { gates, transportStatus } from '../data/mockData'
+import { WAIT_LOW_MAX, WAIT_MED_MAX } from '../utils/constants'
+
+/**
+ * Navigate page — venue map, gate status,
+ * accessibility toggle, and transport info.
+ */
 
 const FILTER_TABS = [
-  { id: 'all',           label: 'All'         },
-  { id: 'restrooms',     label: '🚻 Restrooms' },
-  { id: 'food',          label: '🍔 Food'      },
-  { id: 'exits',         label: '🚪 Exits'     },
-  { id: 'firstaid',      label: '➕ First Aid' },
-  { id: 'accessibility', label: '♿ Accessible' },
-];
+  { id: 'all', label: 'All' },
+  { id: 'restrooms', label: 'Restrooms' },
+  { id: 'food', label: 'Food' },
+  { id: 'exits', label: 'Exits' },
+  { id: 'first-aid', label: 'First Aid' },
+  { id: 'accessibility', label: 'Accessibility' },
+]
 
-const TRANSPORT_ICONS = { metro: '🚇', bus: '🚌', rideshare: '🚗' };
+/** @param {number} wait */
+function waitStatus(wait) {
+  if (wait <= WAIT_LOW_MAX) return 'low'
+  if (wait <= WAIT_MED_MAX) return 'medium'
+  return 'high'
+}
 
-export default function Navigate() {
-  const [activeFilter, setActiveFilter]     = useState('all');
-  const [accessMode, setAccessMode]         = useState(false);
-  const [showRoute, setShowRoute]           = useState(false);
+/** @param {number} wait */
+function waitColor(wait) {
+  if (wait <= WAIT_LOW_MAX) return 'text-green'
+  if (wait <= WAIT_MED_MAX) return 'text-gold'
+  return 'text-crimson'
+}
+
+export function Navigate() {
+  const [activeFilter, setActiveFilter] = useState('all')
+  const [showRoute, setShowRoute] = useState(false)
+  const [accessMode, setAccessMode] = useState(false)
 
   return (
-    <div className="min-h-screen bg-base">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="page-enter space-y-5">
+      {/* ── Header ──────────────────────────── */}
+      <header>
+        <h1 className="font-display text-3xl text-navy">
+          MetLife Stadium
+        </h1>
+        <p className="text-sm text-muted font-mono mt-1">
+          Section C · Row 14 · Seat 22
+        </p>
+      </header>
 
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-display text-navy text-3xl tracking-wide">Navigate</h1>
-            <p className="text-xs text-muted mt-0.5">MetLife Stadium · Section C, Row 14, Seat 22</p>
-          </div>
-          {/* Accessibility toggle */}
+      {/* ── Filter Tabs ─────────────────────── */}
+      <nav
+        aria-label="Map filter tabs"
+        className="flex gap-2 overflow-x-auto no-scrollbar pb-1"
+      >
+        {FILTER_TABS.map((tab) => (
           <button
-            onClick={() => setAccessMode(v => !v)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all
-              ${accessMode
-                ? 'bg-gold text-white border-gold shadow-gold'
-                : 'bg-surface1 text-muted border-surface3 hover:border-gold hover:text-gold'
-              }`}
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveFilter(tab.id)}
+            className={`rounded-full px-4 py-2 text-xs font-medium transition-colors flex-shrink-0 ${
+              activeFilter === tab.id
+                ? 'bg-navy text-white'
+                : 'bg-surface2 text-muted hover:bg-surface3'
+            }`}
+            aria-pressed={activeFilter === tab.id}
           >
-            <Accessibility size={14} />
-            <span className="hidden sm:inline">Accessibility Mode</span>
-            <span className="sm:hidden">♿</span>
+            {tab.label}
           </button>
+        ))}
+      </nav>
+
+      {/* ── Map Card ────────────────────────── */}
+      <section
+        className="bg-surface1 border border-surface3 rounded-2xl p-4 shadow-card"
+        aria-label="Venue map"
+      >
+        {/* Density legend */}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-mono text-muted">
+            Crowd Density
+          </span>
+          <div className="flex gap-3">
+            {[
+              { color: 'bg-green', label: 'Low' },
+              { color: 'bg-gold', label: 'Moderate' },
+              { color: 'bg-crimson', label: 'High' },
+            ].map(({ color, label }) => (
+              <div key={label} className="flex items-center gap-1">
+                <span
+                  className={`w-2 h-2 rounded-full ${color}`}
+                  aria-hidden="true"
+                />
+                <span className="text-xs text-muted">{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-          {FILTER_TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveFilter(tab.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-all
-                ${activeFilter === tab.id
-                  ? 'bg-gold text-white shadow-sm'
-                  : 'bg-surface2 text-muted hover:text-navy hover:bg-surface3'
-                }`}
+        <VenueMap
+          activeFilter={activeFilter}
+          showRoute={showRoute}
+          dark={false}
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowRoute((v) => !v)}
+          className="mt-3 w-full border border-navy text-navy rounded-xl px-4 py-2 text-sm font-medium hover:bg-navy hover:text-white transition-colors"
+        >
+          {showRoute ? 'Hide Route' : 'Show Route to Seat'}
+        </button>
+      </section>
+
+      {/* ── Gate Status ─────────────────────── */}
+      <section aria-label="Gate wait times">
+        <h2 className="text-sm font-medium text-navy border-l-4 border-gold pl-3 mb-3">
+          Gate Status
+        </h2>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar">
+          {gates.map((gate) => (
+            <div
+              key={gate.id}
+              className="bg-surface1 border border-surface3 rounded-xl p-3 min-w-24 flex-shrink-0 shadow-card text-center"
             >
-              {tab.label}
-            </button>
+              <p className="font-display text-2xl text-navy">
+                Gate {gate.id}
+              </p>
+              <p
+                className={`font-mono text-lg font-medium ${waitColor(gate.wait)}`}
+              >
+                {gate.wait} min
+              </p>
+              <div className="mt-1 flex justify-center">
+                <StatusPill status={waitStatus(gate.wait)} />
+              </div>
+            </div>
           ))}
         </div>
+      </section>
 
-        {/* Venue Map */}
-        <div className="relative">
-          <VenueMap
-            activeFilter={activeFilter}
-            showRoute={showRoute}
-            accessibilityMode={accessMode}
-          />
-          {/* Show Route button overlay */}
+      {/* ── Accessibility Card ──────────────── */}
+      <section
+        className="bg-sky/5 border border-sky/20 rounded-xl p-4"
+        aria-label="Accessibility options"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl" aria-hidden="true">
+            ♿
+          </span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-navy">
+              Accessibility Mode
+            </p>
+            <p className="text-xs text-muted mt-0.5">
+              Step-free routes via Gates A, C, F
+            </p>
+          </div>
+          {/* Decorative toggle */}
           <button
-            onClick={() => setShowRoute(v => !v)}
-            className={`absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all shadow-sm
-              ${showRoute
-                ? 'bg-gold text-white'
-                : 'bg-white/90 text-navy border border-surface3 hover:border-gold'
-              }`}
+            type="button"
+            role="switch"
+            aria-checked={accessMode}
+            onClick={() => setAccessMode((v) => !v)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              accessMode ? 'bg-sky' : 'bg-surface3'
+            }`}
+            aria-label="Toggle accessibility mode"
           >
-            <Route size={13} />
-            {showRoute ? 'Hide Route' : 'Show Route'}
+            <span
+              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                accessMode ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
           </button>
         </div>
+      </section>
 
-        {/* Accessibility Info Banner */}
-        {accessMode && (
-          <div className="bg-gold/10 border border-gold/30 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
-            <span className="text-xl flex-shrink-0">♿</span>
-            <div>
-              <p className="text-sm font-semibold text-navy mb-1">Accessibility Mode Active</p>
-              <p className="text-xs text-muted leading-relaxed">
-                Step-free access available at <strong>Gates A, C, F</strong>. Lifts to all levels. 
-                Accessible seating: sections <strong>120-A, 230-B, 340-C</strong>. 
-                Companion seating included at all accessible locations.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Gate Status Row */}
-        <section>
-          <h2 className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-3">
-            Gate Wait Times
-          </h2>
-          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
-            {GATES.map(gate => (
-              <div
-                key={gate.id}
-                className="flex-shrink-0 bg-surface1 border border-surface3 rounded-2xl p-4 min-w-[100px] text-center shadow-card"
-              >
-                <div className="font-display text-navy text-3xl leading-none mb-1">
-                  {gate.id}
-                </div>
-                <div className={`font-mono-data font-bold text-lg leading-none mb-2
-                  ${gate.level === 'high' ? 'text-crimson' : gate.level === 'moderate' ? 'text-gold' : 'text-green'}`}>
-                  {gate.wait} min
-                </div>
-                <StatusPill status={gate.level} />
-                {gate.accessible && (
-                  <div className="mt-1.5 text-[10px] text-gold">♿ Accessible</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Getting Here — Transport */}
-        <section>
-          <h2 className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Navigation size={13} />
-            Getting Here
-          </h2>
-          <div className="space-y-2.5">
-            {TRANSPORT_STATUS.map(t => (
-              <div
-                key={t.id}
-                className="bg-surface1 border border-surface3 rounded-2xl p-4 flex items-center gap-4 shadow-card"
-              >
-                <span className="text-2xl">{t.icon}</span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-semibold text-navy">{t.type}</span>
-                    <span className="text-xs text-muted">{t.label}</span>
-                  </div>
-                  <p className="text-xs text-muted">{t.detail}</p>
-                </div>
-                <div className="text-right">
-                  <StatusPill status={t.status} label={t.statusText} />
-                  <div className="font-mono-data text-sm font-bold text-navy mt-1">{t.eta}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="h-4" />
-      </div>
+      {/* ── Transport Card ──────────────────── */}
+      <section aria-label="Transport options">
+        <h2 className="text-sm font-medium text-navy border-l-4 border-gold pl-3 mb-3">
+          Getting Here
+        </h2>
+        <TransportStrip items={transportStatus} />
+      </section>
     </div>
-  );
+  )
 }

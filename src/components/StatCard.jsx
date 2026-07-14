@@ -1,29 +1,55 @@
-import PropTypes from 'prop-types';
+import PropTypes from 'prop-types'
 
-export default function StatCard({ value, label, icon: Icon, dark = false, className = '' }) {
-  if (dark) {
-    return (
-      <div className={`bg-dash-surface1 border border-dash-surface3 rounded-2xl p-5 flex flex-col gap-1 animate-fade-in ${className}`}>
-        {Icon && <Icon size={16} className="text-dash-gold/60 mb-1" strokeWidth={1.5} />}
-        <div className="font-display text-dash-gold text-4xl leading-none tracking-wide">{value}</div>
-        <div className="text-white/50 text-xs font-medium uppercase tracking-wider mt-1">{label}</div>
-      </div>
-    );
-  }
+/**
+ * Stat display card with large Bebas Neue value
+ * and Inter label. Light and dark (ops) variants.
+ * @param {object} props
+ * @param {string} props.value - Display value
+ * @param {string} props.label - Stat description
+ * @param {string} [props.color] - Value color token
+ * @param {boolean} [props.dark] - Dark ops variant
+ */
+
+const COLOR_MAP = {
+  gold: 'text-gold',
+  crimson: 'text-crimson',
+  sky: 'text-sky',
+  green: 'text-green',
+  'ops-gold': 'text-ops-gold',
+}
+
+export function StatCard({
+  value,
+  label,
+  color = 'gold',
+  dark = false,
+}) {
+  const cardClasses = dark
+    ? 'bg-ops-surface1 border border-ops-surface3'
+    : 'bg-surface1 border border-surface3'
+
+  const labelClasses = dark ? 'text-ops-muted' : 'text-muted'
+  const valueColor = COLOR_MAP[color] ?? 'text-gold'
 
   return (
-    <div className={`bg-surface1 border border-surface3 rounded-2xl p-5 flex flex-col gap-1 shadow-card hover:shadow-gold transition-shadow duration-300 animate-fade-in ${className}`}>
-      {Icon && <Icon size={16} className="text-gold/60 mb-1" strokeWidth={1.5} />}
-      <div className="font-display text-gold text-4xl leading-none tracking-wide">{value}</div>
-      <div className="text-muted text-xs font-medium uppercase tracking-wider mt-1">{label}</div>
+    <div className={`${cardClasses} rounded-2xl p-5 shadow-card`}>
+      <div
+        className={`font-display text-4xl sm:text-5xl leading-none ${valueColor}`}
+      >
+        {value}
+      </div>
+      <div
+        className={`text-xs font-sans mt-2 uppercase tracking-wide ${labelClasses}`}
+      >
+        {label}
+      </div>
     </div>
-  );
+  )
 }
 
 StatCard.propTypes = {
-  value:     PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  label:     PropTypes.string.isRequired,
-  icon:      PropTypes.elementType,
-  dark:      PropTypes.bool,
-  className: PropTypes.string,
-};
+  value: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  color: PropTypes.string,
+  dark: PropTypes.bool,
+}

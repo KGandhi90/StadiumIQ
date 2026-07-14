@@ -1,45 +1,26 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
-import Navbar from './components/Navbar';
-import Home      from './pages/Home';
-import Navigate  from './pages/Navigate';
-import Chat      from './pages/Chat';
-import Dashboard from './pages/Dashboard';
-import FanZone   from './pages/FanZone';
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { FanLayout } from './FanLayout'
+import { Home } from './pages/Home'
+import { Navigate } from './pages/Navigate'
+import { Chat } from './pages/Chat'
+import { FanZone } from './pages/FanZone'
+import { Dashboard } from './pages/Dashboard'
 
-// Dashboard has its own layout — no shared Navbar
-function FanLayout({ children }) {
+export function App() {
   return (
-    <div className="min-h-screen bg-base">
-      <Navbar />
-      <main>{children}</main>
-    </div>
-  );
-}
+    <BrowserRouter>
+      <Routes>
+        {/* Fan pages — shared layout with Navbar */}
+        <Route element={<FanLayout />}>
+          <Route index element={<Home />} />
+          <Route path="navigate" element={<Navigate />} />
+          <Route path="chat" element={<Chat />} />
+          <Route path="fanzone" element={<FanZone />} />
+        </Route>
 
-export default function App() {
-  return (
-    <AppProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Fan-facing pages — shared Navbar */}
-          <Route path="/" element={
-            <FanLayout><Home /></FanLayout>
-          } />
-          <Route path="/navigate" element={
-            <FanLayout><Navigate /></FanLayout>
-          } />
-          <Route path="/chat" element={
-            <FanLayout><Chat /></FanLayout>
-          } />
-          <Route path="/fanzone" element={
-            <FanLayout><FanZone /></FanLayout>
-          } />
-
-          {/* Ops Dashboard — own dark layout, no Navbar */}
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
-      </BrowserRouter>
-    </AppProvider>
-  );
+        {/* Ops dashboard — standalone dark layout */}
+        <Route path="dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }

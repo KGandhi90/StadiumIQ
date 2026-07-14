@@ -1,138 +1,154 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── CSS Custom Properties ─────────────────────────────────── */
-:root {
-  --color-base:     #F8FAFF;
-  --color-surface1: #FFFFFF;
-  --color-surface2: #F1F5F9;
-  --color-surface3: #E2E8F0;
-  --color-gold:     #D97706;
-  --color-navy:     #0F2044;
-  --color-crimson:  #DC2626;
-  --color-green:    #16A34A;
-  --color-muted:    #64748B;
-}
-
-/* ── Global Reset ──────────────────────────────────────────── */
-*, *::before, *::after {
+* {
   box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
+  background-color: #f8faff;
+  color: #0f2044;
   font-family: 'Inter', sans-serif;
-  background-color: var(--color-base);
-  color: var(--color-navy);
-  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+/* ── Skip to main content ─────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  background: #0f2044;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 8px 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 9999;
+  transition: top 0.2s;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 99px;
-}
-
-/* ── LIVE Badge Pulse ──────────────────────────────────────── */
-@keyframes pulse-live {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
-  50%       { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
-}
-.animate-pulse-live {
-  animation: pulse-live 1.5s ease-in-out infinite;
+.skip-link:focus {
+  top: 0;
 }
 
-/* ── Fade In ───────────────────────────────────────────────── */
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out forwards;
+/* ── Focus rings ──────────────────────────── */
+*:focus-visible {
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* ── Slide Up ──────────────────────────────────────────────── */
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.animate-slide-up {
-  animation: slide-up 0.4s ease-out forwards;
+/* ── Ops dashboard dark body override ─────── */
+.ops-mode {
+  background-color: #0a1628;
+  color: #f1f5f9;
 }
 
-/* ── Route Dash Animation ──────────────────────────────────── */
-@keyframes dash-flow {
-  to { stroke-dashoffset: 0; }
+/* ── Page enter animation ─────────────────── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page-enter {
+  animation: fadeUp 0.25s ease forwards;
+}
+
+/* ── LIVE pulse — crimson ─────────────────── */
+@keyframes pulseCrimson {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.pulse-live {
+  animation: pulseCrimson 1.2s ease infinite;
+}
+
+/* ── Gold glow pulse ──────────────────────── */
+@keyframes pulseGold {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.pulse-gold {
+  animation: pulseGold 1.8s ease infinite;
+}
+
+/* ── Route path animation ─────────────────── */
+@keyframes dash {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 .animate-dash {
-  animation: dash-flow 2s linear infinite;
+  animation: dash 1.5s ease forwards;
 }
 
-/* ── Dot Pulse (crowd density indicator) ──────────────────── */
-@keyframes dot-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%       { transform: scale(1.4); opacity: 0.7; }
+/* ── Shimmer skeleton ─────────────────────── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
-.animate-dot-pulse {
-  animation: dot-pulse 2s ease-in-out infinite;
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #e2e8f0 25%,
+    #f1f5f9 50%,
+    #e2e8f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 8px;
+}
+.skeleton-dark {
+  background: linear-gradient(
+    90deg,
+    #0f2044 25%,
+    #162852 50%,
+    #0f2044 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 8px;
 }
 
-/* ── Typography Utilities ──────────────────────────────────── */
-.font-display { font-family: 'Bebas Neue', cursive; }
-.font-mono-data { font-family: 'JetBrains Mono', monospace; }
-
-/* ── Horizontal scroll utility ─────────────────────────────── */
-.scrollbar-hide {
+/* ── Hide scrollbar ───────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
 
-/* ── Glass card ────────────────────────────────────────────── */
-.glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+/* ── Pressable card hover ─────────────────── */
+.pressable {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  cursor: pointer;
 }
-
-/* ── Dashboard dark scrollbar ──────────────────────────────── */
-.dark-scrollbar::-webkit-scrollbar-thumb {
-  background: #1E3A6E;
+.pressable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(15, 32, 68, 0.12);
 }
-
-/* ── Gradient text ─────────────────────────────────────────── */
-.gradient-gold {
-  background: linear-gradient(135deg, #D97706, #F59E0B);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ── SVG Map glows ─────────────────────────────────────────── */
-.glow-high {
-  filter: drop-shadow(0 0 8px rgba(220,38,38,0.6));
-}
-.glow-moderate {
-  filter: drop-shadow(0 0 6px rgba(217,119,6,0.5));
-}
-.glow-low {
-  filter: drop-shadow(0 0 6px rgba(22,163,74,0.5));
+.pressable:active {
+  transform: scale(0.98);
 }
