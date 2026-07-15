@@ -47,16 +47,24 @@ export default [
     settings: { react: { version: 'detect' } },
   },
   {
-    files: [
-      'src/utils/**/*.js',
-      'src/hooks/**/*.js',
-      'src/api/**/*.js',
-    ],
+    // Strict rules for utils and api (pure functions)
+    files: ['src/utils/**/*.js', 'src/api/**/*.js'],
     rules: {
       complexity: ['warn', 10],
       'max-depth': ['warn', 3],
       'max-params': ['warn', 4],
       'max-lines-per-function': ['warn', 60],
+      'no-nested-ternary': 'error',
+    },
+  },
+  {
+    // Hooks are stateful — allow 120 lines per function
+    files: ['src/hooks/**/*.js'],
+    rules: {
+      complexity: ['warn', 12],
+      'max-depth': ['warn', 4],
+      'max-params': ['warn', 4],
+      'max-lines-per-function': ['warn', 120],
       'no-nested-ternary': 'error',
     },
   },

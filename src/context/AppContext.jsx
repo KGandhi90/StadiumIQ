@@ -1,42 +1,94 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { LIVE_MATCH, INITIAL_ALERTS } from '../utils/constants';
-import { subscribeToAlerts } from '../api/firebase';
+import { createContext, useContext, useMemo } from 'react'
+import PropTypes from 'prop-types'
+import {
+  match,
+  upcomingMatches,
+  tournamentStats,
+  aiHighlights,
+  transportStatus,
+  gates,
+  alerts,
+  volunteers,
+  matchStats,
+  commentary,
+  sustainabilityStats,
+  fanGuide,
+  chatSeedMessages,
+  quickReplies,
+  aiOpsInsight,
+} from '../data/mockData'
 
-const AppContext = createContext(null);
+/**
+ * @typedef {object} AppContextValue
+ * @property {typeof match} match
+ * @property {typeof upcomingMatches} upcomingMatches
+ * @property {typeof tournamentStats} tournamentStats
+ * @property {typeof aiHighlights} aiHighlights
+ * @property {typeof transportStatus} transportStatus
+ * @property {typeof gates} gates
+ * @property {typeof alerts} alerts
+ * @property {typeof volunteers} volunteers
+ * @property {typeof matchStats} matchStats
+ * @property {typeof commentary} commentary
+ * @property {typeof sustainabilityStats} sustainabilityStats
+ * @property {typeof fanGuide} fanGuide
+ * @property {typeof chatSeedMessages} chatSeedMessages
+ * @property {typeof quickReplies} quickReplies
+ * @property {typeof aiOpsInsight} aiOpsInsight
+ */
 
+/** @type {import('react').Context<AppContextValue|null>} */
+const AppContext = createContext(
+  /** @type {AppContextValue|null} */ (null)
+)
+
+/**
+ * Provides global read-only seed data to all pages.
+ * Mutable state lives in page-level hooks.
+ * @param {object} props
+ * @param {React.ReactNode} props.children
+ */
 export function AppProvider({ children }) {
-  const [currentMatch, setCurrentMatch] = useState(LIVE_MATCH);
-  const [alerts, setAlerts]             = useState(INITIAL_ALERTS);
-  const [minute, setMinute]             = useState(67);
-
-  // Tick match clock
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setMinute(m => m < 90 ? m + 1 : m);
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Firebase real-time alerts
-  useEffect(() => {
-    const unsub = subscribeToAlerts(firestoreAlerts => {
-      if (firestoreAlerts.length > 0) setAlerts(firestoreAlerts);
-    });
-    return unsub;
-  }, []);
+  const value = useMemo(
+    () => ({
+      match,
+      upcomingMatches,
+      tournamentStats,
+      aiHighlights,
+      transportStatus,
+      gates,
+      alerts,
+      volunteers,
+      matchStats,
+      commentary,
+      sustainabilityStats,
+      fanGuide,
+      chatSeedMessages,
+      quickReplies,
+      aiOpsInsight,
+    }),
+    []
+  )
 
   return (
-    <AppContext.Provider value={{ currentMatch, alerts, setAlerts, minute }}>
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
-  );
+  )
 }
 
-AppProvider.propTypes = { children: PropTypes.node.isRequired };
+AppProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+}
 
-export function useApp() {
-  const ctx = useContext(AppContext);
-  if (!ctx) throw new Error('useApp must be used within AppProvider');
-  return ctx;
+/**
+ * Returns the global app context value.
+ * Must be used within <AppProvider>.
+ * @returns {AppContextValue}
+ */
+export function useAppContext() {
+  const ctx = useContext(AppContext)
+  if (!ctx)
+    throw new Error('useAppContext must be inside AppProvider')
+  return ctx
 }

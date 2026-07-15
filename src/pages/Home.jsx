@@ -1,52 +1,98 @@
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate as useRouterNavigate } from 'react-router-dom'
 import { MapPin, Users, Zap, ChevronRight } from 'lucide-react'
 import { StatCard } from '../components/StatCard'
 import { StatusPill } from '../components/StatusPill'
 import { TransportStrip } from '../components/TransportStrip'
-import {
-  match,
-  upcomingMatches,
-  tournamentStats,
-  aiHighlights,
-  transportStatus,
-} from '../data/mockData'
-
-/**
- * Home page — live match hub, tournament stats,
- * AI highlights, and transport status.
- */
+import { useAppContext } from '../context/AppContext'
+import { useMatch } from '../hooks/useMatch'
+import { trackEvent } from '../utils/analytics'
+import { FACT_INTERVAL_MS } from '../utils/constants'
 
 export function Home() {
-  const capacityPct = Math.round(
-    (match.attendance / match.capacity) * 100
+  const ctx = useAppContext()
+  const { formattedMinute, gates: liveGates } = useMatch(
+    ctx.match,
+    ctx.gates
+  )
+  const [highlightIdx, setHighlightIdx] = useState(0)
+  const [highlightVisible, setHighlightVisible] = useState(true)
+  const routerNavigate = useRouterNavigate()
+
+  const capacityPct = useMemo(
+    () =>
+      Math.round((ctx.match.attendance / ctx.match.capacity) * 100),
+    [ctx.match.attendance, ctx.match.capacity]
+  )
+
+  // Rotate AI highlights with fade transition
+  useEffect(() => {
+    const id = setInterval(() => {
+      setHighlightVisible(false)
+      setTimeout(() => {
+        setHighlightIdx(
+          (prev) => (prev + 1) % ctx.aiHighlights.length
+        )
+        setHighlightVisible(true)
+      }, 300)
+    }, FACT_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [ctx.aiHighlights.length])
+
+  /** @param {React.MouseEvent<HTMLElement>} e */
+  const onMatchCardClick = useCallback(
+    (e) => {
+      const id = e.currentTarget.dataset.id || ''
+      trackEvent('Home', 'MatchCardClicked', id)
+      routerNavigate('/navigate')
+    },
+    [routerNavigate]
+  )
+
+  /** @param {React.KeyboardEvent<HTMLElement>} e */
+  const onMatchCardKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Enter') {
+        const id = e.currentTarget.dataset.id || ''
+        trackEvent('Home', 'MatchCardClicked', id)
+        routerNavigate('/navigate')
+      }
+    },
+    [routerNavigate]
+  )
+
+  const avgCrowd = useMemo(
+    () =>
+      liveGates.filter((g) => g.crowd === 'high').length > 2
+        ? 'high'
+        : 'medium',
+    [liveGates]
   )
 
   return (
     <div className="page-enter space-y-6">
-      {/* ── Live Match Hero ─────────────────── */}
+      {/* Live Match Hero */}
       <section
         className="bg-navy rounded-3xl p-6 sm:p-8 shadow-hero"
         aria-label="Live match"
       >
-        {/* Top row */}
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-sans text-white/60 uppercase tracking-widest">
-            {match.group}
+          <p className="text-xs text-white/60 uppercase tracking-widest">
+            {ctx.match.group}
           </p>
           <div className="flex items-center gap-2">
             <span
               className="w-2 h-2 rounded-full bg-crimson pulse-live"
               aria-hidden="true"
             />
-            <span className="text-xs font-sans text-crimson font-medium">
+            <span className="text-xs text-crimson font-medium">
               LIVE
             </span>
             <span className="font-display text-lg text-gold">
-              {match.minute}&apos;
+              {formattedMinute}
             </span>
           </div>
         </div>
-
-        {/* Teams + score */}
         <div className="flex items-center justify-between my-6">
           <div className="flex flex-col items-start gap-1">
             <span className="text-4xl" aria-hidden="true">
@@ -56,14 +102,12 @@ export function Home() {
               BRAZIL
             </span>
           </div>
-
           <div
             className="font-display text-5xl sm:text-6xl text-gold leading-none"
-            aria-label={`Score: ${match.homeScore} to ${match.awayScore}`}
+            aria-label={`Score: ${ctx.match.homeScore} to ${ctx.match.awayScore}`}
           >
-            {match.homeScore} – {match.awayScore}
+            {ctx.match.homeScore} – {ctx.match.awayScore}
           </div>
-
           <div className="flex flex-col items-end gap-1">
             <span className="text-4xl" aria-hidden="true">
               🇦🇷
@@ -73,8 +117,6 @@ export function Home() {
             </span>
           </div>
         </div>
-
-        {/* Stats strip */}
         <div className="flex gap-6 pt-5 border-t border-white/10 overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <MapPin
@@ -83,7 +125,7 @@ export function Home() {
               aria-hidden="true"
             />
             <span className="text-xs text-white/60">
-              {match.venue}
+              {ctx.match.venue}
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -93,28 +135,33 @@ export function Home() {
               aria-hidden="true"
             />
             <span className="text-xs text-white/60">
-              {match.attendance.toLocaleString()} fans
+              {ctx.match.attendance.toLocaleString()} fans
             </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-xs text-white/60">
               {capacityPct}% capacity
             </span>
-            <StatusPill status="high" />
+            <StatusPill status={avgCrowd} />
           </div>
         </div>
       </section>
 
-      {/* ── Upcoming Matches ────────────────── */}
+      {/* Upcoming Matches */}
       <section aria-label="Upcoming matches">
         <h2 className="text-sm font-medium text-navy border-l-4 border-gold pl-3 mb-3">
           Upcoming Matches
         </h2>
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-          {upcomingMatches.map((m) => (
+          {ctx.upcomingMatches.map((m) => (
             <article
               key={m.id}
               className="min-w-52 bg-surface1 border border-surface3 rounded-2xl p-4 pressable shadow-card flex-shrink-0"
+              data-id={m.id}
+              onClick={onMatchCardClick}
+              onKeyDown={onMatchCardKeyDown}
+              role="button"
+              tabIndex={0}
             >
               <p className="text-xs font-mono text-muted mb-2">
                 {m.date} · {m.time}
@@ -134,13 +181,13 @@ export function Home() {
         </div>
       </section>
 
-      {/* ── Tournament Stats 2x2 ────────────── */}
+      {/* Tournament Stats */}
       <section aria-label="Tournament statistics">
         <h2 className="text-sm font-medium text-navy border-l-4 border-gold pl-3 mb-3">
           Tournament at a Glance
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {tournamentStats.map((stat) => (
+          {ctx.tournamentStats.map((stat) => (
             <StatCard
               key={stat.id}
               value={stat.value}
@@ -151,7 +198,7 @@ export function Home() {
         </div>
       </section>
 
-      {/* ── AI Highlights ───────────────────── */}
+      {/* AI Highlights */}
       <section
         className="bg-surface2 border-l-4 border-gold rounded-2xl p-5 shadow-card"
         aria-label="AI match insights"
@@ -165,36 +212,26 @@ export function Home() {
             Powered by Gemini
           </span>
         </div>
-
-        <ul className="space-y-3" role="list">
-          {aiHighlights.map((highlight, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-gold mt-1.5 flex-shrink-0"
-                aria-hidden="true"
-              />
-              <p className="text-sm text-navy leading-relaxed">
-                {highlight}
-              </p>
-            </li>
-          ))}
-        </ul>
-
+        <p
+          className={`text-sm text-navy leading-relaxed transition-opacity duration-300 ${highlightVisible ? 'opacity-100' : 'opacity-0'}`}
+        >
+          {ctx.aiHighlights[highlightIdx]}
+        </p>
         <a
           href="/chat"
           className="mt-4 text-sm font-medium text-gold flex items-center gap-1 hover:underline"
         >
-          Ask AI Concierge
+          Ask AI Concierge{' '}
           <ChevronRight size={14} aria-hidden="true" />
         </a>
       </section>
 
-      {/* ── Transport Status ─────────────────── */}
+      {/* Transport */}
       <section aria-label="Transport status">
         <h2 className="text-sm font-medium text-navy border-l-4 border-gold pl-3 mb-3">
           Getting Here
         </h2>
-        <TransportStrip items={transportStatus} />
+        <TransportStrip items={ctx.transportStatus} />
       </section>
     </div>
   )

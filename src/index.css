@@ -152,3 +152,33 @@ body {
 .pressable:active {
   transform: scale(0.98);
 }
+
+/* ── Commentary slide in ─────────────────── */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.commentary-enter {
+  animation: slideDown 0.3s ease forwards;
+}
+
+/* ── Number flash on live update ─────────── */
+@keyframes flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.flash {
+  animation: flash 0.4s ease;
+}
+

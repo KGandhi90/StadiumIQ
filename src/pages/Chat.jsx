@@ -1,84 +1,89 @@
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { Globe, SendHorizontal } from 'lucide-react'
 import { ChatBubble } from '../components/ChatBubble'
-import { chatSeedMessages, quickReplies } from '../data/mockData'
+import { useAppContext } from '../context/AppContext'
+import { useChat } from '../hooks/useChat'
 
-/**
- * AI Concierge chat page. Multilingual
- * Gemini-powered assistant for World Cup
- * fan navigation and tournament guidance.
- */
+/** @type {Record<string,string>} */
+const LANG_NAMES = {
+  es: 'Español',
+  fr: 'Français',
+  ar: 'العربية',
+  pt: 'Português',
+  ja: '日本語',
+  de: 'Deutsch',
+}
+
+/** @type {Record<string,string>} */
+const LANG_FLAGS = {
+  es: 'ES',
+  fr: 'FR',
+  ar: 'AR',
+  pt: 'PT',
+  ja: 'JA',
+  de: 'DE',
+}
 
 export function Chat() {
-  const [messages, setMessages] = useState(chatSeedMessages)
-  const [inputValue, setInputValue] = useState('')
-  const messagesEndRef = useRef(null)
-  const textareaRef = useRef(null)
+  const ctx = useAppContext()
+  const {
+    messages,
+    input,
+    isTyping,
+    detectedLang,
+    setInput,
+    sendMessage,
+    handleKeyDown,
+  } = useChat(ctx.chatSeedMessages)
+  const messagesEndRef = useRef(
+    /** @type {HTMLDivElement|null} */ (null)
+  )
+  const textareaRef = useRef(
+    /** @type {HTMLTextAreaElement|null} */ (null)
+  )
 
-  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, isTyping])
 
-  function handleSend() {
-    const text = inputValue.trim()
-    if (!text) return
+  const handleInput = useCallback(
+    (/** @type {React.ChangeEvent<HTMLTextAreaElement>} */ e) => {
+      setInput(e.target.value)
+      e.target.style.height = 'auto'
+      e.target.style.height = `${e.target.scrollHeight}px`
+    },
+    [setInput]
+  )
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        role: 'user',
-        content: text,
-        timestamp: new Date().toLocaleTimeString('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        lang: 'en',
-      },
-    ])
-    setInputValue('')
+  const handleSendClick = useCallback(
+    () => sendMessage(),
+    [sendMessage]
+  )
 
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
-  }
+  /** @param {React.MouseEvent<HTMLButtonElement>} e */
+  const handleQuickReply = useCallback(
+    (e) => {
+      const text = e.currentTarget.dataset.text || ''
+      sendMessage(text)
+    },
+    [sendMessage]
+  )
 
-  function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
-  function handleQuickReply(text) {
-    const timestamp = new Date().toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        role: 'user',
-        content: text,
-        timestamp,
-        lang: 'en',
-      },
-    ])
-  }
-
-  function handleInput(e) {
-    setInputValue(e.target.value)
-    // Auto-grow textarea
-    e.target.style.height = 'auto'
-    e.target.style.height = `${e.target.scrollHeight}px`
-  }
+  /** @param {React.KeyboardEvent<HTMLButtonElement>} e */
+  const handleChipKey = useCallback(
+    (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        const text = e.currentTarget.dataset.text || ''
+        sendMessage(text)
+      }
+    },
+    [sendMessage]
+  )
 
   return (
     <div className="page-enter flex flex-col min-h-[calc(100vh-8rem)]">
-      {/* ── Header Card ─────────────────────── */}
+      {/* Header */}
       <div className="bg-surface1 border border-surface3 rounded-2xl p-4 mb-3 shadow-card flex items-center gap-3">
         <div
           className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center flex-shrink-0"
@@ -95,11 +100,11 @@ export function Chat() {
           </p>
         </div>
         <span className="text-xs border border-surface3 rounded-full px-2.5 py-1 text-muted">
-          🌐 EN
+          🌐 {LANG_FLAGS[detectedLang] || 'EN'}
         </span>
       </div>
 
-      {/* ── Language Banner ──────────────────── */}
+      {/* Language banner */}
       <div className="bg-gold/5 border border-gold/20 rounded-xl px-4 py-3 mb-3 flex gap-2 items-center">
         <Globe
           size={14}
@@ -108,13 +113,13 @@ export function Chat() {
         />
         <p className="text-xs text-navy leading-relaxed">
           Speak to me in any language — Arabic, Español, Português,
-          Français, 日本語, हिंदी, and more. I&apos;ll reply in yours.
+          Français, 日本語, हिंदी, and more.
         </p>
       </div>
 
-      {/* ── Disclaimer ───────────────────────── */}
+      {/* Disclaimer */}
       <div className="bg-surface2 rounded-xl px-4 py-2.5 mb-3">
-        <p className="text-xs text-muted leading-relaxed">
+        <p className="text-xs text-muted">
           For official FIFA information visit{' '}
           <a
             href="https://www.fifa.com"
@@ -124,12 +129,11 @@ export function Chat() {
           >
             fifa.com
           </a>
-          . StadiumIQ AI provides general venue and tournament
-          guidance.
+          . StadiumIQ AI provides general guidance.
         </p>
       </div>
 
-      {/* ── Messages Area ────────────────────── */}
+      {/* Messages */}
       <div
         role="log"
         aria-label="Conversation with StadiumIQ AI"
@@ -145,21 +149,52 @@ export function Chat() {
             timestamp={msg.timestamp}
           />
         ))}
+        {isTyping && (
+          <div
+            role="status"
+            aria-label="StadiumIQ AI is typing"
+            className="flex items-start gap-2.5"
+          >
+            <div
+              className="w-8 h-8 rounded-xl bg-navy flex items-center justify-center flex-shrink-0"
+              aria-hidden="true"
+            >
+              <span className="text-white text-sm">⚡</span>
+            </div>
+            <div className="bg-surface1 border border-surface3 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1 items-center shadow-card">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-2 h-2 rounded-full bg-muted animate-bounce"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                  aria-hidden="true"
+                />
+              ))}
+              {detectedLang !== 'en' && (
+                <span className="ml-2 text-xs text-muted bg-surface2 rounded-full px-2 py-0.5">
+                  Replying in {LANG_NAMES[detectedLang]}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Quick Reply Chips ────────────────── */}
+      {/* Quick Replies */}
       <div
         role="group"
         aria-label="Suggested questions"
-        className="flex flex-wrap gap-2 mb-3"
+        className={`flex flex-wrap gap-2 mb-3 transition-opacity duration-300 ${messages.length > 2 ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : ''}`}
       >
-        {quickReplies.map((qr) => (
+        {ctx.quickReplies.map((qr) => (
           <button
             key={qr.id}
             type="button"
-            onClick={() => handleQuickReply(qr.text)}
-            className={`rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150 border ${
+            data-text={qr.text}
+            onClick={handleQuickReply}
+            onKeyDown={handleChipKey}
+            className={`rounded-xl px-3 py-2 text-xs font-medium transition-all border ${
               qr.lang !== 'en'
                 ? 'border-gold/30 bg-gold/5 text-navy hover:border-gold hover:bg-gold/10'
                 : 'bg-surface1 border-surface3 text-muted hover:border-navy hover:bg-surface2 hover:text-navy'
@@ -170,11 +205,11 @@ export function Chat() {
         ))}
       </div>
 
-      {/* ── Input Bar ───────────────────────── */}
+      {/* Input Bar */}
       <div className="bg-surface1 border border-surface3 rounded-2xl p-3 flex gap-3 items-end shadow-card">
         <textarea
           ref={textareaRef}
-          value={inputValue}
+          value={input}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           rows={1}
@@ -184,8 +219,8 @@ export function Chat() {
         />
         <button
           type="button"
-          onClick={handleSend}
-          disabled={!inputValue.trim()}
+          onClick={handleSendClick}
+          disabled={!input.trim() || isTyping}
           className="w-10 h-10 bg-navy rounded-xl flex items-center justify-center flex-shrink-0 hover:bg-navy/80 transition-colors disabled:opacity-40"
           aria-label="Send message"
         >
