@@ -262,7 +262,7 @@ export function detectLanguage(text) {
   )
     return 'es'
   if (
-    /\b(où|toilette|manger|merci|bonjour|siège|porte|comment)\b/.test(
+    /\b(où|toilettes?|manger|merci|bonjour|siège|porte|comment)\b/.test(
       t
     )
   )
@@ -312,11 +312,13 @@ export function formatMatchTime(minute) {
 /**
  * Returns crowd level from gate wait minutes.
  * @param {number} waitMin - Wait in minutes
+ * @param {number} [lowMax] - Low threshold (default 3)
+ * @param {number} [medMax] - Medium threshold (default 7)
  * @returns {'low'|'medium'|'high'}
  */
-export function getCrowdLevel(waitMin) {
-  if (waitMin <= 3) return 'low'
-  if (waitMin <= 7) return 'medium'
+export function getCrowdLevel(waitMin, lowMax = 3, medMax = 7) {
+  if (waitMin <= lowMax) return 'low'
+  if (waitMin <= medMax) return 'medium'
   return 'high'
 }
 

@@ -11,19 +11,25 @@ import { FACT_INTERVAL_MS } from '../utils/constants'
 
 export function Home() {
   const ctx = useAppContext()
-  const { formattedMinute, gates: liveGates } = useMatch(
-    ctx.match,
-    ctx.gates
-  )
+  const {
+    formattedMinute,
+    gates: liveGates,
+    match: liveMatch,
+  } = useMatch()
   const [highlightIdx, setHighlightIdx] = useState(0)
   const [highlightVisible, setHighlightVisible] = useState(true)
   const routerNavigate = useRouterNavigate()
 
-  const capacityPct = useMemo(
-    () =>
-      Math.round((ctx.match.attendance / ctx.match.capacity) * 100),
-    [ctx.match.attendance, ctx.match.capacity]
+  const matchDisplay = useMemo(
+    () => liveMatch ?? ctx.matchState,
+    [liveMatch, ctx.matchState]
   )
+
+  const capacityPct = useMemo(() => {
+    const checkedIn = matchDisplay?.attendance ?? 79340
+    const capacity = matchDisplay?.capacity ?? 82500
+    return Math.round((checkedIn / capacity) * 100)
+  }, [matchDisplay])
 
   // Rotate AI highlights with fade transition
   useEffect(() => {
@@ -69,6 +75,31 @@ export function Home() {
     [liveGates]
   )
 
+  // Loading skeleton
+  if (ctx.isLoading) {
+    return (
+      <div
+        className="page-enter space-y-6"
+        aria-busy="true"
+        aria-label="Loading match data"
+      >
+        <div className="bg-navy rounded-3xl p-6 sm:p-8 shadow-hero animate-pulse">
+          <div className="h-4 bg-white/10 rounded w-32 mb-6" />
+          <div className="h-16 bg-white/10 rounded mb-6" />
+          <div className="h-4 bg-white/10 rounded w-48" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-20 bg-surface2 rounded-2xl animate-pulse"
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page-enter space-y-6">
       {/* Live Match Hero */}
@@ -78,7 +109,7 @@ export function Home() {
       >
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs text-white/60 uppercase tracking-widest">
-            {ctx.match.group}
+            {matchDisplay?.group}
           </p>
           <div className="flex items-center gap-2">
             <span
@@ -104,9 +135,9 @@ export function Home() {
           </div>
           <div
             className="font-display text-5xl sm:text-6xl text-gold leading-none"
-            aria-label={`Score: ${ctx.match.homeScore} to ${ctx.match.awayScore}`}
+            aria-label={`Score: ${matchDisplay?.homeScore} to ${matchDisplay?.awayScore}`}
           >
-            {ctx.match.homeScore} – {ctx.match.awayScore}
+            {matchDisplay?.homeScore} – {matchDisplay?.awayScore}
           </div>
           <div className="flex flex-col items-end gap-1">
             <span className="text-4xl" aria-hidden="true">
@@ -125,7 +156,7 @@ export function Home() {
               aria-hidden="true"
             />
             <span className="text-xs text-white/60">
-              {ctx.match.venue}
+              {matchDisplay?.venue}
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -135,7 +166,7 @@ export function Home() {
               aria-hidden="true"
             />
             <span className="text-xs text-white/60">
-              {ctx.match.attendance.toLocaleString()} fans
+              {(matchDisplay?.attendance ?? 0).toLocaleString()} fans
             </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">

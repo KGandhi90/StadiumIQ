@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Loader2, Leaf, Zap } from 'lucide-react'
 import { useAppContext } from '../context/AppContext'
-import { useMatch } from '../hooks/useMatch'
 import { useFanZone } from '../hooks/useFanZone'
+import { LIVE_UPDATE_MS } from '../utils/constants'
 
 const STAT_ROWS = [
   { key: 'possession', label: 'POSSESSION', unit: '%' },
@@ -12,13 +12,19 @@ const STAT_ROWS = [
 
 export function FanZone() {
   const ctx = useAppContext()
-  const { minute } = useMatch(ctx.match, ctx.gates)
-  const { commentary, isGenerating, stats, generateCommentary } =
-    useFanZone({
-      commentary: ctx.commentary,
-      matchStats: ctx.matchStats,
-    })
+  const {
+    commentary,
+    isGenerating,
+    stats,
+    generateCommentary,
+    tickStats,
+  } = useFanZone()
   const [animated, setAnimated] = useState(false)
+
+  const minute = useMemo(
+    () => ctx.matchState?.minute ?? 67,
+    [ctx.matchState]
+  )
 
   // Animate progress bars on mount
   useEffect(() => {
@@ -26,9 +32,15 @@ export function FanZone() {
     return () => clearTimeout(id)
   }, [])
 
+  // Tick stats every 30s (client-side — fan UX, not operational data)
+  useEffect(() => {
+    const id = setInterval(tickStats, LIVE_UPDATE_MS * 2.5)
+    return () => clearInterval(id)
+  }, [tickStats])
+
   const onGenerate = useCallback(
-    () => generateCommentary(minute),
-    [generateCommentary, minute]
+    () => generateCommentary(),
+    [generateCommentary]
   )
 
   return (
@@ -103,7 +115,7 @@ export function FanZone() {
         </div>
       </section>
 
-      {/* AI Commentary */}
+      {/* AI Commentary — from Firestore, synced across all devices */}
       <section aria-label="AI match commentary">
         <div className="flex items-center gap-2 mb-3">
           <Zap size={14} className="text-gold" aria-hidden="true" />
@@ -124,7 +136,7 @@ export function FanZone() {
           >
             {commentary.map((entry, i) => (
               <li
-                key={`${entry.minute}-${i}`}
+                key={entry.id ?? `${entry.minute}-${i}`}
                 role="article"
                 className={`flex gap-4 p-4 items-start ${i === 0 ? 'commentary-enter' : ''}`}
               >

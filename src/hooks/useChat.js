@@ -1,13 +1,15 @@
 // @ts-check
-import { useState, useCallback } from 'react'
-import { getMockReply, detectLanguage } from '../utils/helpers'
+import { useState, useContext, useCallback } from 'react'
+import { detectLanguage } from '../utils/helpers'
 import { trackEvent } from '../utils/analytics'
 import { TYPING_MS } from '../utils/constants'
+import { AppContext } from '../context/AppContext'
 
 /**
  * Manages AI Concierge chat state.
- * Uses multilingual mock replies — replaced
- * with real Gemini in Phase 3.
+ * Routes messages through Gemini AI (via AppContext) with full
+ * multi-turn history. Falls back to mock replies if Gemini unavailable.
+ *
  * @param {Array<{id:number,role:string,content:string,timestamp:string,lang:string}>} seedMessages
  * @returns {{
  *   messages: Array,
@@ -15,13 +17,14 @@ import { TYPING_MS } from '../utils/constants'
  *   isTyping: boolean,
  *   error: string|null,
  *   detectedLang: string,
- *   apiHistory: Array,
- *   setInput: (v: string) => void,
- *   sendMessage: (override?: string) => Promise<void>,
- *   handleKeyDown: (e: any) => void
+ *   setInput: function(string): void,
+ *   sendMessage: function(string=): Promise<void>,
+ *   handleKeyDown: function(React.KeyboardEvent): void
  * }}
  */
 export function useChat(seedMessages) {
+  const ctx = useContext(AppContext)
+
   const [messages, setMessages] = useState(() => [...seedMessages])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -34,8 +37,8 @@ export function useChat(seedMessages) {
   const [detectedLang, setDetectedLang] = useState('en')
 
   /**
-   * Sends a message and triggers a multilingual mock AI reply.
-   * Detects language from user input and responds in kind.
+   * Sends a message to Gemini AI and appends the reply.
+   * Maintains full conversation history for multi-turn context.
    * @param {string} [overrideText] - Pre-filled quick reply text
    * @returns {Promise<void>}
    */
@@ -72,39 +75,46 @@ export function useChat(seedMessages) {
       )
       trackEvent('Chat', 'LanguageDetected', lang)
 
-      setApiHistory((prev) => [
-        ...prev,
-        { role: 'user', content: text },
-      ])
-
+      // Brief typing delay for UX — Gemini calls are async anyway
       await new Promise((r) => setTimeout(r, TYPING_MS))
 
-      const { text: replyText } = getMockReply(text)
-
-      const aiMsg = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: replyText,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        lang,
+      let replyText = ''
+      try {
+        // Use Gemini via context (falls back to mock internally)
+        replyText =
+          (await ctx?.sendConciergeMessage(text, apiHistory)) ?? ''
+      } catch (_err) {
+        setError('Unable to reach AI — please try again.')
+        replyText = ''
       }
 
-      setMessages((prev) => [...prev, aiMsg])
-      setApiHistory((prev) => [
-        ...prev,
-        { role: 'model', content: replyText },
-      ])
+      if (replyText) {
+        const aiMsg = {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: replyText,
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          lang,
+        }
+
+        setMessages((prev) => [...prev, aiMsg])
+        setApiHistory((prev) => [
+          ...prev,
+          { role: 'user', content: text },
+          { role: 'assistant', content: replyText },
+        ])
+      }
+
       setIsTyping(false)
     },
-    [input, isTyping]
+    [input, isTyping, apiHistory, ctx]
   )
 
   /**
-   * Handles Enter key to send without Shift.
-   * Shift+Enter inserts a newline.
+   * Handles Enter key to send (Shift+Enter = newline).
    * @param {React.KeyboardEvent<HTMLTextAreaElement>} e
    */
   const handleKeyDown = useCallback(
@@ -123,7 +133,6 @@ export function useChat(seedMessages) {
     isTyping,
     error,
     detectedLang,
-    apiHistory,
     setInput,
     sendMessage,
     handleKeyDown,

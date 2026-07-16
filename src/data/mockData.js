@@ -303,3 +303,17 @@ export const aiOpsInsight =
   'Section G will exit via Gate D at full time. ' +
   'Recommend deploying 4 additional stewards ' +
   'to Gate D by the 74th minute.'
+
+/**
+ * Aggregated mock data object used for Firestore seeding.
+ * Individual named exports are still preferred for direct imports.
+ */
+export const mockData = {
+  match,
+  gates,
+  alerts,
+  volunteers,
+  commentary,
+  matchStats,
+  aiOpsInsight,
+}

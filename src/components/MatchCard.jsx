@@ -1,9 +1,10 @@
-import { MapPin, Users } from 'lucide-react';
-import { LIVE_MATCH } from '../utils/constants';
-import { formatNumber, attendancePct } from '../utils/helpers';
+import { MapPin, Users } from 'lucide-react'
+import { match as LIVE_MATCH } from '../data/mockData'
 
 export default function MatchCard({ match = LIVE_MATCH }) {
-  const pct = attendancePct(match.attendance, match.capacity);
+  const pct = Math.round(
+    ((match?.attendance || 0) / (match?.capacity || 1)) * 100
+  )
 
   return (
     <div className="bg-navy rounded-3xl p-6 sm:p-8 shadow-dark animate-fade-in">
@@ -19,7 +20,9 @@ export default function MatchCard({ match = LIVE_MATCH }) {
               LIVE
             </span>
           )}
-          <span className="font-display text-gold text-2xl leading-none">{match.minute}'</span>
+          <span className="font-display text-gold text-2xl leading-none">
+            {match.minute}'
+          </span>
         </div>
       </div>
 
@@ -27,7 +30,9 @@ export default function MatchCard({ match = LIVE_MATCH }) {
       <div className="flex items-center justify-between gap-4 mb-6">
         {/* Home */}
         <div className="flex flex-col items-center gap-1 flex-1">
-          <span className="text-3xl sm:text-4xl">{match.homeTeam.flag}</span>
+          <span className="text-3xl sm:text-4xl">
+            {match.homeTeam.flag}
+          </span>
           <span className="font-display text-white text-2xl sm:text-3xl tracking-wide">
             {match.homeTeam.name}
           </span>
@@ -38,12 +43,16 @@ export default function MatchCard({ match = LIVE_MATCH }) {
           <div className="font-display text-gold text-5xl sm:text-6xl leading-none tracking-wide">
             {match.homeTeam.score} – {match.awayTeam.score}
           </div>
-          <div className="text-white/40 text-xs font-medium mt-1 uppercase tracking-wider">Score</div>
+          <div className="text-white/40 text-xs font-medium mt-1 uppercase tracking-wider">
+            Score
+          </div>
         </div>
 
         {/* Away */}
         <div className="flex flex-col items-center gap-1 flex-1">
-          <span className="text-3xl sm:text-4xl">{match.awayTeam.flag}</span>
+          <span className="text-3xl sm:text-4xl">
+            {match.awayTeam.flag}
+          </span>
           <span className="font-display text-white text-2xl sm:text-3xl tracking-wide">
             {match.awayTeam.name}
           </span>
@@ -58,7 +67,9 @@ export default function MatchCard({ match = LIVE_MATCH }) {
         </div>
         <div className="flex items-center gap-1.5 text-white/60 text-xs">
           <Users size={12} />
-          <span className="font-mono-data">{formatNumber(match.attendance)}</span>
+          <span className="font-mono-data">
+            {(match.attendance || 0).toLocaleString()}
+          </span>
           <span>fans checked in</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs">
@@ -68,9 +79,11 @@ export default function MatchCard({ match = LIVE_MATCH }) {
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="text-gold font-mono-data font-medium">{pct}% capacity</span>
+          <span className="text-gold font-mono-data font-medium">
+            {pct}% capacity
+          </span>
         </div>
       </div>
     </div>
-  );
+  )
 }

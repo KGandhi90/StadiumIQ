@@ -1,112 +1,93 @@
 // @ts-check
-import { useState, useEffect, useCallback } from 'react'
-import { clamp } from '../utils/helpers'
+import { useState, useContext, useMemo, useCallback } from 'react'
+import { AppContext } from '../context/AppContext'
 import { trackEvent } from '../utils/analytics'
-
-/** @type {string[]} */
-const MOCK_COMMENTARY_ENTRIES = [
-  'The intensity in MetLife Stadium is electric — 79,000 fans on their feet.',
-  'Brazil looking to kill the game — their counter-attack pace is lethal.',
-  'Argentina pressing high. De Paul wins another duel in the engine room.',
-  'The noise from the Brazilian end is deafening as they build another move.',
-  'World Cup football at its finest under the New Jersey sky.',
-  "Goalkeeper Dibu Martínez comes off his line brilliantly — Brazil can't find a way through.",
-  'Rodrigo scores! MetLife erupts as Brazil extend their lead! 3–1!',
-  "Argentina won't give up. This is what the World Cup is all about.",
-]
+import { matchStats as mockStats } from '../data/mockData'
 
 /**
- * Manages Fan Zone live match stats and
- * AI commentary feed state.
- * Stats simulate updates every 30 seconds.
- * @param {{
- *   commentary: Array<{minute:string,text:string}>,
- *   matchStats: {
- *     possession: {home:number,away:number},
- *     shots: {home:number,away:number},
- *     passes: {home:number,away:number},
- *     corners: {home:number,away:number}
- *   }
- * }} ctx - Context data
+ * Manages Fan Zone state.
+ * Commentary comes from Firestore (via AppContext) — synced across all clients.
+ * Match stats are client-side (minor variance acceptable for fan-facing data).
+ * Generating commentary calls Gemini then saves to Firestore for all to see.
+ *
  * @returns {{
- *   commentary: Array<{minute:string,text:string}>,
+ *   commentary: Array,
  *   isGenerating: boolean,
  *   stats: object,
- *   generateCommentary: (minute: number) => Promise<void>
+ *   generateCommentary: function(): Promise<void>
  * }}
  */
-export function useFanZone(ctx) {
-  const [commentary, setCommentary] = useState(() => [
-    ...ctx.commentary,
-  ])
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [stats, setStats] = useState(() => ({ ...ctx.matchStats }))
+export function useFanZone() {
+  const ctx = useContext(AppContext)
 
-  // Live stats simulation — every 30 seconds
-  useEffect(() => {
-    const id = setInterval(() => {
-      setStats((prev) => {
-        const newHomePoss = clamp(
-          prev.possession.home + (Math.random() > 0.5 ? 1 : -1),
-          40,
-          65
-        )
-        return {
-          possession: { home: newHomePoss, away: 100 - newHomePoss },
-          shots: {
-            home:
-              Math.random() > 0.85
-                ? prev.shots.home + 1
-                : prev.shots.home,
-            away:
-              Math.random() > 0.9
-                ? prev.shots.away + 1
-                : prev.shots.away,
-          },
-          passes: {
-            home: prev.passes.home + Math.floor(Math.random() * 4),
-            away: prev.passes.away + Math.floor(Math.random() * 3),
-          },
-          corners: {
-            home:
-              Math.random() > 0.9
-                ? prev.corners.home + 1
-                : prev.corners.home,
-            away:
-              Math.random() > 0.92
-                ? prev.corners.away + 1
-                : prev.corners.away,
-          },
-        }
-      })
-    }, 30000)
-    return () => clearInterval(id)
-  }, [])
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  // Live stats — client-side simulation (fan-facing, per-client variance is fine)
+  const [stats, setStats] = useState(mockStats)
+
+  // Commentary comes from Firestore — all clients see the same feed
+  const commentary = useMemo(() => ctx?.commentary ?? [], [ctx])
+
+  const matchMinute = useMemo(
+    () => ctx?.matchState?.minute ?? 67,
+    [ctx]
+  )
 
   /**
-   * Generates a new mock commentary entry and prepends it to the feed.
-   * In Phase 3 this will call the Gemini API.
-   * @param {number} currentMinute - Current match minute
+   * Generates a commentary line via Gemini and saves it to Firestore.
+   * All subscribed clients receive the new entry via onSnapshot.
    * @returns {Promise<void>}
    */
-  const generateCommentary = useCallback(async (currentMinute) => {
+  const generateCommentary = useCallback(async () => {
+    if (isGenerating || !ctx) return
     setIsGenerating(true)
 
-    await new Promise((r) => setTimeout(r, 1500))
-
-    const text =
-      MOCK_COMMENTARY_ENTRIES[
-        Math.floor(Math.random() * MOCK_COMMENTARY_ENTRIES.length)
-      ]
-
-    setCommentary((prev) => [
-      { minute: String(currentMinute), text },
-      ...prev,
-    ])
-    setIsGenerating(false)
+    const text = await ctx.generateCommentary()
+    await ctx.saveCommentary(String(matchMinute), text)
 
     trackEvent('FanZone', 'CommentaryGenerated')
+    setIsGenerating(false)
+  }, [isGenerating, ctx, matchMinute])
+
+  /**
+   * Nudges match stats to simulate live updates.
+   * Called by FanZone page on a 30s interval.
+   * @returns {void}
+   */
+  const tickStats = useCallback(() => {
+    setStats((prev) => ({
+      possession: {
+        home: Math.max(
+          40,
+          Math.min(
+            65,
+            prev.possession.home + Math.floor(Math.random() * 5 - 2)
+          )
+        ),
+        away: Math.max(
+          35,
+          Math.min(
+            60,
+            prev.possession.away + Math.floor(Math.random() * 5 - 2)
+          )
+        ),
+      },
+      shots: {
+        home: prev.shots.home + (Math.random() > 0.8 ? 1 : 0),
+        away: prev.shots.away + (Math.random() > 0.85 ? 1 : 0),
+      },
+      passes: {
+        home: prev.passes.home + Math.floor(Math.random() * 8 + 2),
+        away: prev.passes.away + Math.floor(Math.random() * 6 + 1),
+      },
+    }))
   }, [])
 
-  return { commentary, isGenerating, stats, generateCommentary }
+  return {
+    commentary,
+    isGenerating,
+    stats,
+    generateCommentary,
+    tickStats,
+  }
 }

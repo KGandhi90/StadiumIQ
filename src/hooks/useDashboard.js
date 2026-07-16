@@ -1,92 +1,104 @@
 // @ts-check
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useContext, useMemo, useCallback } from 'react'
+import { AppContext } from '../context/AppContext'
 import { trackEvent } from '../utils/analytics'
+import { aiOpsInsight as mockOpsInsight } from '../data/mockData'
 
 /**
- * Manages Ops Dashboard state — active section,
- * alerts, volunteer management, gate control,
- * and broadcast messaging.
- * @param {{
- *   alerts: Array,
- *   volunteers: Array,
- *   gates: Array
- * }} ctx - Context data
+ * Provides dashboard state and actions.
+ * All alert/volunteer/gate data comes from AppContext (Firestore).
+ * Local state: UI-only (activeSection, broadcastOpen, opsInsight).
+ *
+ * @returns {object} Dashboard state and handlers
  */
-export function useDashboard(ctx) {
+export function useDashboard() {
+  const ctx = useContext(AppContext)
+
   const [activeSection, setActiveSection] = useState('overview')
-  const [alerts, setAlerts] = useState(() => [...ctx.alerts])
-  const [volunteers, setVolunteers] = useState(() => [
-    ...ctx.volunteers,
-  ])
   const [broadcastOpen, setBroadcastOpen] = useState(false)
   const [broadcastMsg, setBroadcastMsg] = useState('')
-  const [gates, setGates] = useState(() => [...ctx.gates])
+  const [opsInsight, setOpsInsight] = useState(mockOpsInsight)
+  const [isGeneratingInsight, setIsGeneratingInsight] =
+    useState(false)
 
-  /**
-   * Marks an alert as resolved.
-   * @param {number} alertId
-   */
-  const resolveAlert = useCallback((alertId) => {
-    setAlerts((prev) =>
-      prev.map((a) =>
-        a.id === alertId ? { ...a, resolved: true } : a
-      )
-    )
-    trackEvent('Dashboard', 'AlertResolved', `Alert ${alertId}`)
-  }, [])
+  const alerts = useMemo(() => ctx?.alerts ?? [], [ctx])
 
-  /**
-   * Toggles volunteer status between 'on-duty' and 'break'.
-   * @param {number} volunteerId
-   */
-  const toggleVolunteer = useCallback((volunteerId) => {
-    setVolunteers((prev) =>
-      prev.map((v) =>
-        v.id === volunteerId
-          ? {
-              ...v,
-              status: v.status === 'on-duty' ? 'break' : 'on-duty',
-            }
-          : v
-      )
-    )
-    trackEvent('Dashboard', 'VolunteerUpdated')
-  }, [])
+  const volunteers = useMemo(() => ctx?.volunteers ?? [], [ctx])
 
-  /**
-   * Sends a broadcast message — adds it as a new alert.
-   */
-  const sendBroadcast = useCallback(() => {
-    if (!broadcastMsg.trim()) return
-    const newAlert = {
-      id: Date.now(),
-      zone: 'All Zones',
-      msg: broadcastMsg.trim(),
-      time: '—',
-      resolved: false,
-      type: 'broadcast',
-    }
-    setAlerts((prev) => [newAlert, ...prev])
-    setBroadcastMsg('')
-    setBroadcastOpen(false)
-    trackEvent('Dashboard', 'BroadcastSent')
-  }, [broadcastMsg])
-
-  /**
-   * Toggles a gate open/redirect state.
-   * @param {string} gateId
-   */
-  const toggleGate = useCallback((gateId) => {
-    setGates((prev) =>
-      prev.map((g) => (g.id === gateId ? { ...g, open: !g.open } : g))
-    )
-    trackEvent('Dashboard', 'GateToggled', gateId)
-  }, [])
+  const venueState = ctx?.venueState ?? null
+  const matchState = ctx?.matchState ?? null
 
   const openAlerts = useMemo(
     () => alerts.filter((a) => !a.resolved),
     [alerts]
   )
+
+  const activeVolunteers = useMemo(
+    () => volunteers.filter((v) => v.status === 'on-duty').length,
+    [volunteers]
+  )
+
+  const gates = useMemo(() => venueState?.gates ?? [], [venueState])
+
+  const checkedIn = useMemo(
+    () => venueState?.checkedIn ?? 0,
+    [venueState]
+  )
+
+  const avgWait = useMemo(
+    () => venueState?.avgWait ?? 0,
+    [venueState]
+  )
+
+  /** @param {string} alertId */
+  const resolveAlert = useCallback(
+    async (alertId) => {
+      await ctx?.resolveAlert(alertId)
+      trackEvent('Dashboard', 'AlertResolved')
+    },
+    [ctx]
+  )
+
+  /**
+   * @param {string} volunteerId
+   * @param {string} currentStatus
+   */
+  const toggleVolunteer = useCallback(
+    async (volunteerId, currentStatus) => {
+      await ctx?.toggleVolunteerStatus(volunteerId, currentStatus)
+      trackEvent('Dashboard', 'VolunteerUpdated')
+    },
+    [ctx]
+  )
+
+  /** @param {string} gateId */
+  const toggleGate = useCallback(async (gateId) => {
+    // Gate open/close is venue-state — log as alert for now
+    trackEvent('Dashboard', 'GateToggled', gateId)
+  }, [])
+
+  const sendBroadcast = useCallback(async () => {
+    if (!broadcastMsg.trim()) return
+    await ctx?.addAlert({
+      zone: 'All Zones',
+      msg: broadcastMsg.trim(),
+      time: `${matchState?.minute ?? 67}'`,
+      resolved: false,
+      type: 'broadcast',
+    })
+    setBroadcastMsg('')
+    setBroadcastOpen(false)
+    trackEvent('Dashboard', 'BroadcastSent')
+  }, [broadcastMsg, matchState, ctx])
+
+  const refreshOpsInsight = useCallback(async () => {
+    if (!ctx?.generateOpsInsight) return
+    setIsGeneratingInsight(true)
+    const insight = await ctx.generateOpsInsight()
+    setOpsInsight(insight)
+    setIsGeneratingInsight(false)
+    trackEvent('Dashboard', 'InsightGenerated')
+  }, [ctx])
 
   return {
     activeSection,
@@ -96,12 +108,18 @@ export function useDashboard(ctx) {
     resolveAlert,
     volunteers,
     toggleVolunteer,
+    toggleGate,
     broadcastOpen,
     setBroadcastOpen,
     broadcastMsg,
     setBroadcastMsg,
     sendBroadcast,
     gates,
-    toggleGate,
+    checkedIn,
+    avgWait,
+    activeVolunteers,
+    opsInsight,
+    isGeneratingInsight,
+    refreshOpsInsight,
   }
 }

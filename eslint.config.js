@@ -47,8 +47,8 @@ export default [
     settings: { react: { version: 'detect' } },
   },
   {
-    // Strict rules for utils and api (pure functions)
-    files: ['src/utils/**/*.js', 'src/api/**/*.js'],
+    // Strict rules for utils (pure functions — keep short)
+    files: ['src/utils/**/*.js'],
     rules: {
       complexity: ['warn', 10],
       'max-depth': ['warn', 3],
@@ -58,8 +58,8 @@ export default [
     },
   },
   {
-    // Hooks are stateful — allow 120 lines per function
-    files: ['src/hooks/**/*.js'],
+    // API modules (firebase/gemini) and hooks — stateful, allow 120 lines
+    files: ['src/api/**/*.js', 'src/hooks/**/*.js'],
     rules: {
       complexity: ['warn', 12],
       'max-depth': ['warn', 4],

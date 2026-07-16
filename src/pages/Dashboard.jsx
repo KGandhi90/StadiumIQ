@@ -7,15 +7,14 @@ import {
   Bus,
   Radio,
   X,
+  RefreshCw,
 } from 'lucide-react'
 import { StatCard } from '../components/StatCard'
 import { VenueMap } from '../components/VenueMap'
 import { StatusPill } from '../components/StatusPill'
 import { TransportStrip } from '../components/TransportStrip'
 import { useAppContext } from '../context/AppContext'
-import { useMatch } from '../hooks/useMatch'
 import { useDashboard } from '../hooks/useDashboard'
-import { CHECKED_IN, ACTIVE_VOLUNTEERS } from '../utils/constants'
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
@@ -27,12 +26,7 @@ const NAV_ITEMS = [
 
 export function Dashboard() {
   const ctx = useAppContext()
-  const { gates: liveGates, avgWait } = useMatch(ctx.match, ctx.gates)
-  const db = useDashboard({
-    alerts: ctx.alerts,
-    volunteers: ctx.volunteers,
-    gates: liveGates,
-  })
+  const db = useDashboard()
   const broadcastTextareaRef = useRef(
     /** @type {HTMLTextAreaElement|null} */ (null)
   )
@@ -49,17 +43,17 @@ export function Dashboard() {
 
   const OPS_STATS = [
     {
-      value: CHECKED_IN.toLocaleString(),
+      value: db.checkedIn.toLocaleString(),
       label: 'Fans Checked In',
       color: 'ops-gold',
     },
     {
-      value: `${avgWait} min`,
+      value: `${db.avgWait} min`,
       label: 'Avg Gate Wait',
       color: 'crimson',
     },
     {
-      value: String(ACTIVE_VOLUNTEERS),
+      value: String(db.activeVolunteers),
       label: 'Active Volunteers',
       color: 'green',
     },
@@ -135,6 +129,7 @@ export function Dashboard() {
         className="flex-1 overflow-y-auto bg-ops-base p-6"
         aria-label="Operations dashboard"
       >
+        {/* Live Stat Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           {OPS_STATS.map((stat) => (
             <StatCard
@@ -146,9 +141,11 @@ export function Dashboard() {
             />
           ))}
         </div>
+
+        {/* AI Ops Insight */}
         <section
           className="bg-ops-gold/10 border border-ops-gold/20 rounded-2xl p-5 mb-6"
-          aria-label="AI insight"
+          aria-label="AI operational insight"
         >
           <div className="flex items-center gap-2 mb-3">
             <Zap
@@ -159,16 +156,29 @@ export function Dashboard() {
             <h2 className="text-sm font-semibold text-white">
               AI Operational Insight
             </h2>
-            <span className="text-xs text-ops-muted ml-auto font-mono">
-              Gemini
-            </span>
+            <button
+              type="button"
+              onClick={db.refreshOpsInsight}
+              disabled={db.isGeneratingInsight}
+              className="ml-auto flex items-center gap-1.5 text-xs text-ops-muted hover:text-ops-gold transition-colors disabled:opacity-40"
+              aria-label="Refresh AI insight"
+            >
+              <RefreshCw
+                size={12}
+                className={
+                  db.isGeneratingInsight ? 'animate-spin' : ''
+                }
+                aria-hidden="true"
+              />
+              {db.isGeneratingInsight ? 'Generating...' : 'Refresh'}
+            </button>
           </div>
           <p className="text-sm text-white/80 leading-relaxed">
-            {ctx.aiOpsInsight}
+            {db.opsInsight}
           </p>
         </section>
 
-        {/* Alerts section */}
+        {/* Alerts */}
         {(db.activeSection === 'overview' ||
           db.activeSection === 'alerts') && (
           <div className="bg-ops-surface1 border border-ops-surface3 rounded-2xl p-5 mb-6">
@@ -202,7 +212,7 @@ export function Dashboard() {
                     <time className="text-xs font-mono text-ops-muted">
                       {alert.time}
                     </time>
-                    {!alert.resolved && (
+                    {!alert.resolved ? (
                       <button
                         type="button"
                         onClick={() => db.resolveAlert(alert.id)}
@@ -210,8 +220,7 @@ export function Dashboard() {
                       >
                         Resolve
                       </button>
-                    )}
-                    {alert.resolved && (
+                    ) : (
                       <span className="text-xs text-green">
                         Resolved ✓
                       </span>
@@ -223,7 +232,7 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* Volunteers section */}
+        {/* Volunteers */}
         {(db.activeSection === 'overview' ||
           db.activeSection === 'volunteers') && (
           <div className="bg-ops-surface1 border border-ops-surface3 rounded-2xl p-5 mb-6">
@@ -270,8 +279,10 @@ export function Dashboard() {
                     <td className="py-2.5">
                       <button
                         type="button"
-                        onClick={() => db.toggleVolunteer(vol.id)}
-                        className="flex items-center gap-1"
+                        onClick={() =>
+                          db.toggleVolunteer(vol.id, vol.status)
+                        }
+                        aria-label={`Toggle ${vol.name} status`}
                       >
                         <StatusPill status={vol.status} />
                       </button>
@@ -283,7 +294,7 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* Crowd Map section */}
+        {/* Crowd Map */}
         {db.activeSection === 'crowd' && (
           <section aria-label="Crowd heatmap">
             <h2 className="text-base font-semibold text-white mb-4">
@@ -293,7 +304,7 @@ export function Dashboard() {
               <VenueMap dark activeFilter="all" />
             </div>
             <div className="space-y-2">
-              {liveGates.map((gate) => (
+              {db.gates.map((gate) => (
                 <div
                   key={gate.id}
                   className="bg-ops-surface1 border border-ops-surface3 rounded-xl p-3 flex items-center gap-3"
@@ -305,22 +316,20 @@ export function Dashboard() {
                   <span className="font-mono text-sm text-white/70">
                     {gate.wait} min
                   </span>
-                  <div className="flex gap-2 ml-auto">
-                    <button
-                      type="button"
-                      onClick={() => db.toggleGate(gate.id)}
-                      className={`text-xs px-3 py-1 rounded-lg border transition-colors ${gate.open ? 'border-green text-green' : 'border-crimson text-crimson'}`}
-                    >
-                      {gate.open ? 'Open' : 'Closed'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => db.toggleGate(gate.id)}
+                    className={`text-xs px-3 py-1 rounded-lg border transition-colors ml-auto ${gate.open ? 'border-green text-green' : 'border-crimson text-crimson'}`}
+                  >
+                    {gate.open ? 'Open' : 'Closed'}
+                  </button>
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* Transport section */}
+        {/* Transport */}
         {db.activeSection === 'transport' && (
           <section aria-label="Transport overview">
             <h2 className="text-base font-semibold text-white mb-4">

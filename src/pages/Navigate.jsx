@@ -22,10 +22,7 @@ const waitColor = (w) =>
 
 export function Navigate() {
   const ctx = useAppContext()
-  const { gates: liveGates, lastUpdated } = useMatch(
-    ctx.match,
-    ctx.gates
-  )
+  const { gates: liveGates, lastUpdated } = useMatch()
   const {
     activeFilter,
     showRoute,
@@ -36,10 +33,11 @@ export function Navigate() {
   } = useVenueNavigate()
   const [secsAgo, setSecsAgo] = useState(0)
 
-  // "Last updated Xs ago" ticker
+  // "Last updated Xs ago" ticker — resets when Firestore timestamp changes
   useEffect(() => {
+    const refTime = lastUpdated?.toDate?.()?.getTime?.() ?? Date.now()
     const id = setInterval(() => {
-      setSecsAgo(Math.floor((Date.now() - lastUpdated) / 1000))
+      setSecsAgo(Math.floor((Date.now() - refTime) / 1000))
     }, 1000)
     return () => clearInterval(id)
   }, [lastUpdated])
@@ -85,7 +83,7 @@ export function Navigate() {
         ))}
       </nav>
 
-      {/* Map Card */}
+      {/* Map */}
       <section
         id="venue-map"
         role="tabpanel"
@@ -130,14 +128,16 @@ export function Navigate() {
         </button>
       </section>
 
-      {/* Gate Status */}
+      {/* Gate Status — live from Firestore */}
       <section aria-label="Gate wait times">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-navy border-l-4 border-gold pl-3">
             Gate Status
           </h2>
           <span className="text-xs font-mono text-muted">
-            Updated {secsAgo}s ago
+            {secsAgo === 0
+              ? 'Just updated'
+              : `Updated ${secsAgo}s ago`}
           </span>
         </div>
         <ul

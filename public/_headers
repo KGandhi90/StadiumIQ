@@ -1,7 +1,15 @@
 /*
+ * Content-Security-Policy updated for Phase 3:
+ * - firebase.googleapis.com / firebaseio.com for Firestore
+ * - generativelanguage.googleapis.com for Gemini
+ * - www.google.com / www.gstatic.com for reCAPTCHA App Check
+ * - www.googletagmanager.com for GA4
+ */
+/*
+  /
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
-  X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com; connect-src 'self' https://generativelanguage.googleapis.com https://firestore.googleapis.com https://www.google-analytics.com https://*.firebaseio.com; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:;
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://firebase.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://generativelanguage.googleapis.com https://www.google-analytics.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https:; frame-src https://www.google.com; worker-src 'self'
+*/
