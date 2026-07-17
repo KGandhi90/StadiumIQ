@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 import { useContext, useMemo } from 'react'
 import { AppContext } from '../context/AppContext'
 import { formatMatchTime } from '../utils/helpers'

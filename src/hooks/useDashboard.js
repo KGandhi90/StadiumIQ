@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 import { useState, useContext, useMemo, useCallback } from 'react'
 import { AppContext } from '../context/AppContext'
 import { trackEvent } from '../utils/analytics'

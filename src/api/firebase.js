@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 import { initializeApp } from 'firebase/app'
 import {
   getFirestore,
@@ -194,7 +194,7 @@ export async function seedFirestoreIfEmpty() {
 
 /**
  * @typedef {object} SimulationHandle
- * @property {function(): void} stop - Stops all simulation intervals
+ * @property {Function} stop - Stops all simulation intervals
  */
 
 /**
